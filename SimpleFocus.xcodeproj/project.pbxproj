@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		FD22C4B42EA40D9E00E88B83 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FD22C4B32EA40D9E00E88B83 /* WidgetKit.framework */; };
+		FD22C4B62EA40D9E00E88B83 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FD22C4B52EA40D9E00E88B83 /* SwiftUI.framework */; };
+		FD22C4C52EA40DA000E88B83 /* SimpleFocusWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FD22C4B12EA40D9E00E88B83 /* SimpleFocusWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		FD22C46D2EA2D3AB00E88B83 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,17 +27,68 @@
 			remoteGlobalIDString = FD22C45E2EA2D3A900E88B83;
 			remoteInfo = SimpleFocus;
 		};
+		FD22C4C32EA40DA000E88B83 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FD22C4572EA2D3A900E88B83 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FD22C4B02EA40D9E00E88B83;
+			remoteInfo = SimpleFocusWidgetExtension;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		FD22C4CA2EA40DA000E88B83 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				FD22C4C52EA40DA000E88B83 /* SimpleFocusWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		FD22C45F2EA2D3A900E88B83 /* SimpleFocus.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SimpleFocus.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FD22C46C2EA2D3AB00E88B83 /* SimpleFocusTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SimpleFocusTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		FD22C4762EA2D3AB00E88B83 /* SimpleFocusUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SimpleFocusUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		FD22C4B12EA40D9E00E88B83 /* SimpleFocusWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SimpleFocusWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		FD22C4B32EA40D9E00E88B83 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		FD22C4B52EA40D9E00E88B83 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		FD22C4D02EA4103B00E88B83 /* SimpleFocusWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SimpleFocusWidgetExtension.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		FD22C4C62EA40DA000E88B83 /* Exceptions for "SimpleFocusWidget" folder in "SimpleFocusWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = FD22C4B02EA40D9E00E88B83 /* SimpleFocusWidgetExtension */;
+		};
+		FD22C4D22EA4121200E88B83 /* Exceptions for "SimpleFocus" folder in "SimpleFocusWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Models/TaskItem.swift,
+				Policies/AppGroup.swift,
+				Policies/TaskLimit.swift,
+				Services/CelebrationProvider.swift,
+				Services/EncouragementProvider.swift,
+				Stores/TaskStore.swift,
+				Widget/TaskWidgetTimelineBuilder.swift,
+			);
+			target = FD22C4B02EA40D9E00E88B83 /* SimpleFocusWidgetExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		FD22C4612EA2D3A900E88B83 /* SimpleFocus */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				FD22C4D22EA4121200E88B83 /* Exceptions for "SimpleFocus" folder in "SimpleFocusWidgetExtension" target */,
+			);
 			path = SimpleFocus;
 			sourceTree = "<group>";
 		};
@@ -43,6 +100,14 @@
 		FD22C4792EA2D3AB00E88B83 /* SimpleFocusUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = SimpleFocusUITests;
+			sourceTree = "<group>";
+		};
+		FD22C4B72EA40D9E00E88B83 /* SimpleFocusWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				FD22C4C62EA40DA000E88B83 /* Exceptions for "SimpleFocusWidget" folder in "SimpleFocusWidgetExtension" target */,
+			);
+			path = SimpleFocusWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -69,15 +134,27 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		FD22C4AE2EA40D9E00E88B83 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FD22C4B62EA40D9E00E88B83 /* SwiftUI.framework in Frameworks */,
+				FD22C4B42EA40D9E00E88B83 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		FD22C4562EA2D3A900E88B83 = {
 			isa = PBXGroup;
 			children = (
+				FD22C4D02EA4103B00E88B83 /* SimpleFocusWidgetExtension.entitlements */,
 				FD22C4612EA2D3A900E88B83 /* SimpleFocus */,
 				FD22C46F2EA2D3AB00E88B83 /* SimpleFocusTests */,
 				FD22C4792EA2D3AB00E88B83 /* SimpleFocusUITests */,
+				FD22C4B72EA40D9E00E88B83 /* SimpleFocusWidget */,
+				FD22C4B22EA40D9E00E88B83 /* Frameworks */,
 				FD22C4602EA2D3A900E88B83 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -88,8 +165,18 @@
 				FD22C45F2EA2D3A900E88B83 /* SimpleFocus.app */,
 				FD22C46C2EA2D3AB00E88B83 /* SimpleFocusTests.xctest */,
 				FD22C4762EA2D3AB00E88B83 /* SimpleFocusUITests.xctest */,
+				FD22C4B12EA40D9E00E88B83 /* SimpleFocusWidgetExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		FD22C4B22EA40D9E00E88B83 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				FD22C4B32EA40D9E00E88B83 /* WidgetKit.framework */,
+				FD22C4B52EA40D9E00E88B83 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -102,13 +189,16 @@
 				FD22C45B2EA2D3A900E88B83 /* Sources */,
 				FD22C45C2EA2D3A900E88B83 /* Frameworks */,
 				FD22C45D2EA2D3A900E88B83 /* Resources */,
+				FD22C4CA2EA40DA000E88B83 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				FD22C4C42EA40DA000E88B83 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				FD22C4612EA2D3A900E88B83 /* SimpleFocus */,
+				FD22C4B72EA40D9E00E88B83 /* SimpleFocusWidget */,
 			);
 			name = SimpleFocus;
 			packageProductDependencies = (
@@ -163,6 +253,28 @@
 			productReference = FD22C4762EA2D3AB00E88B83 /* SimpleFocusUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		FD22C4B02EA40D9E00E88B83 /* SimpleFocusWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FD22C4C72EA40DA000E88B83 /* Build configuration list for PBXNativeTarget "SimpleFocusWidgetExtension" */;
+			buildPhases = (
+				FD22C4AD2EA40D9E00E88B83 /* Sources */,
+				FD22C4AE2EA40D9E00E88B83 /* Frameworks */,
+				FD22C4AF2EA40D9E00E88B83 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				FD22C4B72EA40D9E00E88B83 /* SimpleFocusWidget */,
+			);
+			name = SimpleFocusWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = SimpleFocusWidgetExtension;
+			productReference = FD22C4B12EA40D9E00E88B83 /* SimpleFocusWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -184,6 +296,9 @@
 						CreatedOnToolsVersion = 26.0.1;
 						TestTargetID = FD22C45E2EA2D3A900E88B83;
 					};
+					FD22C4B02EA40D9E00E88B83 = {
+						CreatedOnToolsVersion = 26.0.1;
+					};
 				};
 			};
 			buildConfigurationList = FD22C45A2EA2D3A900E88B83 /* Build configuration list for PBXProject "SimpleFocus" */;
@@ -203,6 +318,7 @@
 				FD22C45E2EA2D3A900E88B83 /* SimpleFocus */,
 				FD22C46B2EA2D3AB00E88B83 /* SimpleFocusTests */,
 				FD22C4752EA2D3AB00E88B83 /* SimpleFocusUITests */,
+				FD22C4B02EA40D9E00E88B83 /* SimpleFocusWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -223,6 +339,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		FD22C4742EA2D3AB00E88B83 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FD22C4AF2EA40D9E00E88B83 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -253,6 +376,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		FD22C4AD2EA40D9E00E88B83 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -265,6 +395,11 @@
 			isa = PBXTargetDependency;
 			target = FD22C45E2EA2D3A900E88B83 /* SimpleFocus */;
 			targetProxy = FD22C4772EA2D3AB00E88B83 /* PBXContainerItemProxy */;
+		};
+		FD22C4C42EA40DA000E88B83 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FD22C4B02EA40D9E00E88B83 /* SimpleFocusWidgetExtension */;
+			targetProxy = FD22C4C32EA40DA000E88B83 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -395,6 +530,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = SimpleFocus/SimpleFocus.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = CS89D8T86T;
@@ -427,6 +563,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = SimpleFocus/SimpleFocus.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = CS89D8T86T;
@@ -538,6 +675,68 @@
 			};
 			name = Release;
 		};
+		FD22C4C82EA40DA000E88B83 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = SimpleFocusWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = CS89D8T86T;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SimpleFocusWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = SimpleFocusWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zifengguo.SimpleFocus.SimpleFocusWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		FD22C4C92EA40DA000E88B83 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = SimpleFocusWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = CS89D8T86T;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SimpleFocusWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = SimpleFocusWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zifengguo.SimpleFocus.SimpleFocusWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -573,6 +772,15 @@
 			buildConfigurations = (
 				FD22C4872EA2D3AB00E88B83 /* Debug */,
 				FD22C4882EA2D3AB00E88B83 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FD22C4C72EA40DA000E88B83 /* Build configuration list for PBXNativeTarget "SimpleFocusWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FD22C4C82EA40DA000E88B83 /* Debug */,
+				FD22C4C92EA40DA000E88B83 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -8,7 +8,12 @@ struct SimpleFocusApp: App {
 
     init() {
         do {
-            container = try ModelContainer(for: TaskItem.self)
+            if AppGroup.containerURL() != nil {
+                container = try ModelContainer(for: TaskItem.self,
+                                               configurations: ModelConfiguration(groupContainerIdentifier: AppGroup.identifier))
+            } else {
+                container = try ModelContainer(for: TaskItem.self)
+            }
         } catch {
             fatalError("Failed to create model container: \(error)")
         }

@@ -99,3 +99,16 @@ final class TaskStore {
         return try modelContext.fetchCount(descriptor)
     }
 }
+
+extension TaskStore {
+    static func makeSharedStore() throws -> TaskStore {
+        if AppGroup.containerURL() != nil {
+            let container = try ModelContainer(for: TaskItem.self,
+                                               configurations: ModelConfiguration(groupContainerIdentifier: AppGroup.identifier))
+            return TaskStore(modelContext: container.mainContext)
+        } else {
+            let container = try ModelContainer(for: TaskItem.self)
+            return TaskStore(modelContext: container.mainContext)
+        }
+    }
+}
