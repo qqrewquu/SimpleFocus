@@ -1,17 +1,24 @@
-//
-//  SimpleFocusApp.swift
-//  SimpleFocus
-//
-//  Created by Zifeng Guo on 2025-10-17.
-//
-
+import SwiftData
 import SwiftUI
 
 @main
 struct SimpleFocusApp: App {
+    private let container: ModelContainer
+    private let store: TaskStore
+
+    init() {
+        do {
+            container = try ModelContainer(for: TaskItem.self)
+        } catch {
+            fatalError("Failed to create model container: \(error)")
+        }
+        store = TaskStore(modelContext: container.mainContext)
+    }
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(store: store)
+                .modelContainer(container)
         }
     }
 }
