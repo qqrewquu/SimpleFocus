@@ -28,7 +28,7 @@ struct TaskDataCoreTests {
     func taskStorePersistsAndFetchesTodayTasks() async throws {
         let container = try ModelContainer(for: TaskItem.self,
                                            configurations: ModelConfiguration(isStoredInMemoryOnly: true))
-        let store = TaskStore(modelContext: container.mainContext)
+        let store = TaskStore(modelContext: container.mainContext)#imageLiteral(resourceName: "simulator_screenshot_B1B70783-C1EC-4F48-912E-D58C1ED4C68F.png")
 
         let todayTask = TaskItem(content: "Plan MVP")
         let completedTask = TaskItem(content: "Finish yesterday", isCompleted: true)

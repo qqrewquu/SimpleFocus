@@ -8,12 +8,11 @@ struct SimpleFocusApp: App {
 
     init() {
         do {
-            if AppGroup.containerURL() != nil {
-                container = try ModelContainer(for: TaskItem.self,
-                                               configurations: ModelConfiguration(groupContainerIdentifier: AppGroup.identifier))
-            } else {
-                container = try ModelContainer(for: TaskItem.self)
+            guard let sharedURL = AppGroup.containerURL()?.appending(path: "SimpleFocus.store") else {
+                fatalError("Unable to locate shared App Group container.")
             }
+            let configuration = ModelConfiguration(url: sharedURL)
+            container = try ModelContainer(for: TaskItem.self, configurations: configuration)
         } catch {
             fatalError("Failed to create model container: \(error)")
         }

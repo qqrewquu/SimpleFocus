@@ -102,13 +102,12 @@ final class TaskStore {
 
 extension TaskStore {
     static func makeSharedStore() throws -> TaskStore {
-        if AppGroup.containerURL() != nil {
-            let container = try ModelContainer(for: TaskItem.self,
-                                               configurations: ModelConfiguration(groupContainerIdentifier: AppGroup.identifier))
-            return TaskStore(modelContext: container.mainContext)
-        } else {
-            let container = try ModelContainer(for: TaskItem.self)
-            return TaskStore(modelContext: container.mainContext)
+        guard let sharedURL = AppGroup.containerURL()?.appending(path: "SimpleFocus.store") else {
+            throw NSError(domain: "TaskStore", code: -1, userInfo: [NSLocalizedDescriptionKey: "Unable to locate shared App Group container."])
         }
+
+        let configuration = ModelConfiguration(url: sharedURL)
+        let container = try ModelContainer(for: TaskItem.self, configurations: configuration)
+        return TaskStore(modelContext: container.mainContext)
     }
 }

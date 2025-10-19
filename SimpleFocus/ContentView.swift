@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import WidgetKit
 
 struct ContentView: View {
     @StateObject private var viewModel: TaskListViewModel
@@ -241,6 +242,7 @@ private extension ContentView {
         Task {
             do {
                 try await viewModel.refresh()
+                WidgetCenter.shared.reloadAllTimelines()
             } catch {
                 assertionFailure("Failed to refresh after adding task: \(error)")
             }
@@ -253,6 +255,7 @@ private extension ContentView {
                 try await viewModel.complete(task: task)
                 try await viewModel.refresh(animate: true)
                 viewModel.clearCompletionAnimation(for: task.id)
+                WidgetCenter.shared.reloadAllTimelines()
             } catch {
                 assertionFailure("Failed to complete task: \(error)")
             }
