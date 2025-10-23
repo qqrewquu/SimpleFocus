@@ -5,14 +5,21 @@ import WidgetKit
 struct ContentView: View {
     @StateObject private var viewModel: TaskListViewModel
     @StateObject private var addTaskViewModel: AddTaskViewModel
+    @StateObject private var historyViewModel: HistoryViewModel
+    @StateObject private var historyNavigation = HistoryNavigationState()
     @State private var isPresentingAddTask = false
 #if DEBUG
     @State private var isShowingResetAlert = false
 #endif
 
-    init(store: TaskStore) {
-        _viewModel = StateObject(wrappedValue: TaskListViewModel(store: store))
+    init(store: TaskStore, liveActivityController: LiveActivityLifecycleController? = nil) {
+        let taskListViewModel = TaskListViewModel(store: store)
+        if let liveActivityController {
+            taskListViewModel.setLiveActivityController(liveActivityController)
+        }
+        _viewModel = StateObject(wrappedValue: taskListViewModel)
         _addTaskViewModel = StateObject(wrappedValue: AddTaskViewModel(store: store))
+        _historyViewModel = StateObject(wrappedValue: HistoryViewModel(store: store))
     }
 
     var body: some View {
@@ -54,6 +61,12 @@ struct ContentView: View {
             .presentationDragIndicator(.visible)
             .presentationBackground(AppTheme.background)
         }
+        .sheet(isPresented: historySheetBinding) {
+            HistoryView(viewModel: historyViewModel)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(AppTheme.background)
+        }
         .sheet(item: Binding(
             get: { viewModel.celebration },
             set: { value in
@@ -77,13 +90,14 @@ struct ContentView: View {
                 .font(.system(size: 32, weight: .bold))
                 .foregroundColor(AppTheme.textPrimary)
 
-#if DEBUG
             HStack {
+                historyButton
                 Spacer()
+#if DEBUG
                 debugMenu
-            }
-            .padding(.trailing, 4)
 #endif
+            }
+            .padding(.horizontal, 4)
         }
         .frame(maxWidth: .infinity)
     }
@@ -105,6 +119,29 @@ struct ContentView: View {
         .contentShape(Rectangle())
     }
 #endif
+
+    private var historyButton: some View {
+        Button {
+            historyNavigation.showHistory()
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.system(size: 18, weight: .semibold))
+                Text("历史")
+                    .font(.system(size: 17, weight: .semibold))
+            }
+            .foregroundColor(AppTheme.textSecondary)
+            .padding(.vertical, 6)
+            .padding(.horizontal, 12)
+            .background(
+                Capsule()
+                    .fill(AppTheme.surfaceElevated)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("查看历史记录")
+        .offset(x: -16)
+    }
 
     @ViewBuilder
     private var content: some View {
@@ -238,11 +275,25 @@ private struct LimitReachedView: View {
 }
 
 private extension ContentView {
+    var historySheetBinding: Binding<Bool> {
+        Binding(
+            get: { historyNavigation.isShowingHistory },
+            set: { newValue in
+                if newValue {
+                    historyNavigation.showHistory()
+                } else {
+                    historyNavigation.dismissHistory()
+                }
+            }
+        )
+    }
+
     func awaitRefreshAfterAdding(task: TaskItem) {
         Task {
             do {
                 try await viewModel.refresh()
                 WidgetCenter.shared.reloadAllTimelines()
+                try await historyViewModel.loadHistory()
             } catch {
                 assertionFailure("Failed to refresh after adding task: \(error)")
             }
@@ -256,6 +307,7 @@ private extension ContentView {
                 try await viewModel.refresh(animate: true)
                 viewModel.clearCompletionAnimation(for: task.id)
                 WidgetCenter.shared.reloadAllTimelines()
+                try await historyViewModel.loadHistory()
             } catch {
                 assertionFailure("Failed to complete task: \(error)")
             }
@@ -268,6 +320,7 @@ private extension ContentView {
             do {
                 try await viewModel.resetTodayTasks()
                 addTaskViewModel.content = ""
+                try await historyViewModel.loadHistory()
             } catch {
                 assertionFailure("Failed to clear today's tasks: \(error)")
             }

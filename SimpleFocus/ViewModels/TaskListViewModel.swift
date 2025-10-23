@@ -24,6 +24,7 @@ final class TaskListViewModel: ObservableObject {
     private let store: TaskStore
     private let celebrationProvider: CelebrationProviding
     private let encouragementProvider: EncouragementProviding
+    private var liveActivityController: LiveActivityLifecycleController?
 
     init(store: TaskStore,
          celebrationProvider: CelebrationProviding = CelebrationProvider(),
@@ -31,6 +32,10 @@ final class TaskListViewModel: ObservableObject {
         self.store = store
         self.celebrationProvider = celebrationProvider
         self.encouragementProvider = encouragementProvider
+    }
+
+    func setLiveActivityController(_ controller: LiveActivityLifecycleController) {
+        liveActivityController = controller
     }
 
     func refresh(referenceDate: Date = Date(), animate: Bool = false) async throws {
@@ -50,6 +55,26 @@ final class TaskListViewModel: ObservableObject {
 
         pruneCompletedAnimationFlags()
         try updateAddAvailability(referenceDate: referenceDate)
+
+        if let controller = liveActivityController {
+            do {
+                let todaysTasks = try await store.fetchTasksForToday(referenceDate: referenceDate)
+                try await controller.handleTasksChanged(referenceDate: referenceDate, tasks: todaysTasks)
+            } catch {
+                #if DEBUG
+                if let managerError = error as? LiveActivityManagerError {
+                    switch managerError {
+                    case .unsupportedTarget:
+                        print("[LiveActivity] 当前设备/模拟器不支持 Live Activity 展示，已忽略。")
+                    case .activitiesDisabled:
+                        print("[LiveActivity] Live Activity 功能未启用。");
+                    }
+                } else {
+                    print("[LiveActivity] Failed to update: \(error)")
+                }
+                #endif
+            }
+        }
     }
 
     func complete(task: TaskItem) async throws {

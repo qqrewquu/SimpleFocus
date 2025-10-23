@@ -28,7 +28,7 @@ struct TaskDataCoreTests {
     func taskStorePersistsAndFetchesTodayTasks() async throws {
         let container = try ModelContainer(for: TaskItem.self,
                                            configurations: ModelConfiguration(isStoredInMemoryOnly: true))
-        let store = TaskStore(modelContext: container.mainContext)#imageLiteral(resourceName: "simulator_screenshot_B1B70783-C1EC-4F48-912E-D58C1ED4C68F.png")
+        let store = TaskStore(modelContext: container.mainContext)
 
         let todayTask = TaskItem(content: "Plan MVP")
         let completedTask = TaskItem(content: "Finish yesterday", isCompleted: true)
@@ -43,6 +43,57 @@ struct TaskDataCoreTests {
         #expect(results.count == 1)
         #expect(results.first?.content == "Plan MVP")
     }
+
+    @Test("TaskStore fetches all tasks for today including completed")
+    func taskStoreFetchesAllTasksForToday() async throws {
+        let container = try ModelContainer(for: TaskItem.self,
+                                           configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let store = TaskStore(modelContext: container.mainContext)
+
+        let base = Date(timeIntervalSince1970: 2_500_000)
+        let first = TaskItem(content: "Morning", creationDate: base, isCompleted: false)
+        let second = TaskItem(content: "Evening", creationDate: base.addingTimeInterval(3600), isCompleted: true)
+        let previous = TaskItem(content: "Yesterday", creationDate: Calendar.current.date(byAdding: .day, value: -1, to: base)!)
+
+        try store.save(task: first)
+        try store.save(task: second)
+        try store.save(task: previous)
+
+        let tasks = try await store.fetchTasksForToday(referenceDate: base)
+
+        #expect(tasks.count == 2)
+        #expect(tasks.map(\.content) == ["Morning", "Evening"])
+    }
+
+    @Test("Fetch completed tasks returns only finished items sorted by creation date descending")
+    func fetchCompletedTasksReturnsSortedResults() async throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let base = Date(timeIntervalSince1970: 1_000_000) // deterministic reference
+        let olderDate = calendar.date(byAdding: .day, value: -1, to: base)!
+        let newerDate = calendar.date(byAdding: .hour, value: 6, to: base)!
+
+        let container = try ModelContainer(for: TaskItem.self,
+                                           configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let store = TaskStore(modelContext: container.mainContext, calendar: calendar)
+
+        let older = TaskItem(content: "Older completed", creationDate: olderDate, isCompleted: true)
+        let newer = TaskItem(content: "Newer completed", creationDate: newerDate, isCompleted: true)
+        let incomplete = TaskItem(content: "Incomplete item", creationDate: newerDate, isCompleted: false)
+
+        try store.save(task: older)
+        try store.save(task: newer)
+        try store.save(task: incomplete)
+
+        let results = try await store.fetchCompletedTasks()
+
+        let contents = results.map(\.content)
+        let allCompleted = results.allSatisfy(\.isCompleted)
+
+        #expect(results.count == 2)
+        #expect(contents == ["Newer completed", "Older completed"])
+        #expect(allCompleted)
+    }
 }
 
 @Suite("Main Screen ViewModel Tests")
@@ -54,7 +105,13 @@ struct MainScreenViewModelTests {
         let container = try ModelContainer(for: TaskItem.self,
                                            configurations: ModelConfiguration(isStoredInMemoryOnly: true))
         let store = TaskStore(modelContext: container.mainContext)
-        let viewModel = TaskListViewModel(store: store)
+        let liveActivity = LiveActivityManagerSpy()
+        let lifecycle = LiveActivityLifecycleController(manager: liveActivity,
+                                                        stateBuilder: LiveActivityStateBuilder())
+        let viewModel = TaskListViewModel(store: store,
+                                          celebrationProvider: CelebrationProvider(),
+                                          encouragementProvider: EncouragementProvider(),
+                                          liveActivityController: lifecycle)
 
         let today = TaskItem(content: "Design layout")
         let completed = TaskItem(content: "Ship feature", isCompleted: true)
@@ -77,7 +134,13 @@ struct MainScreenViewModelTests {
         let container = try ModelContainer(for: TaskItem.self,
                                            configurations: ModelConfiguration(isStoredInMemoryOnly: true))
         let store = TaskStore(modelContext: container.mainContext)
-        let viewModel = TaskListViewModel(store: store)
+        let liveActivity = LiveActivityManagerSpy()
+        let lifecycle = LiveActivityLifecycleController(manager: liveActivity,
+                                                        stateBuilder: LiveActivityStateBuilder())
+        let viewModel = TaskListViewModel(store: store,
+                                          celebrationProvider: CelebrationProvider(),
+                                          encouragementProvider: EncouragementProvider(),
+                                          liveActivityController: lifecycle)
 
         try await viewModel.refresh()
 
@@ -90,7 +153,13 @@ struct MainScreenViewModelTests {
         let container = try ModelContainer(for: TaskItem.self,
                                            configurations: ModelConfiguration(isStoredInMemoryOnly: true))
         let store = TaskStore(modelContext: container.mainContext)
-        let viewModel = TaskListViewModel(store: store)
+        let liveActivity = LiveActivityManagerSpy()
+        let lifecycle = LiveActivityLifecycleController(manager: liveActivity,
+                                                        stateBuilder: LiveActivityStateBuilder())
+        let viewModel = TaskListViewModel(store: store,
+                                          celebrationProvider: CelebrationProvider(),
+                                          encouragementProvider: EncouragementProvider(),
+                                          liveActivityController: lifecycle)
 
         let task = TaskItem(content: "Finish mock")
         try store.save(task: task)
@@ -111,7 +180,13 @@ struct MainScreenViewModelTests {
                                            configurations: ModelConfiguration(isStoredInMemoryOnly: true))
         let store = TaskStore(modelContext: container.mainContext)
         let celebration = StubCelebrationProvider()
-        let viewModel = TaskListViewModel(store: store, celebrationProvider: celebration)
+        let liveActivity = LiveActivityManagerSpy()
+        let lifecycle = LiveActivityLifecycleController(manager: liveActivity,
+                                                        stateBuilder: LiveActivityStateBuilder())
+        let viewModel = TaskListViewModel(store: store,
+                                          celebrationProvider: celebration,
+                                          encouragementProvider: EncouragementProvider(),
+                                          liveActivityController: lifecycle)
 
         let first = TaskItem(content: "Item 1")
         let second = TaskItem(content: "Item 2")
@@ -228,7 +303,224 @@ struct MainScreenViewModelTests {
 
         try await viewModel.refresh()
 
-        #expect(viewModel.limitState == encouragement.stubMessage)
+        guard let limitState = viewModel.limitState else {
+            Issue.record("Expected limit state message when daily limit is reached")
+            return
+        }
+
+        #expect(limitState.message == encouragement.stubMessage.message)
+        #expect(limitState.encouragement == encouragement.stubMessage.encouragement)
+    }
+}
+
+@Suite("Live Activity Integration")
+@MainActor
+struct LiveActivityIntegrationTests {
+
+    private func makeViewModel(referenceDate: Date = Date()) throws -> (TaskListViewModel, TaskStore, LiveActivityManagerSpy, Date) {
+        let container = try ModelContainer(for: TaskItem.self,
+                                           configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let store = TaskStore(modelContext: container.mainContext)
+        let spy = LiveActivityManagerSpy()
+        let lifecycle = LiveActivityLifecycleController(manager: spy,
+                                                        stateBuilder: LiveActivityStateBuilder())
+        let viewModel = TaskListViewModel(store: store)
+        viewModel.setLiveActivityController(lifecycle)
+        return (viewModel, store, spy, referenceDate)
+    }
+
+    @Test("First refresh starts Live Activity")
+    func firstRefreshStartsLiveActivity() async throws {
+        let referenceDate = Date(timeIntervalSince1970: 6_000_000)
+        let (viewModel, store, spy, date) = try makeViewModel(referenceDate: referenceDate)
+
+        try store.save(task: TaskItem(content: "Focus work", creationDate: date))
+
+        try await viewModel.refresh(referenceDate: date)
+
+        #expect(spy.startedActivities.count == 1)
+        #expect(spy.updatedActivities.isEmpty)
+        #expect(spy.endedActivities.isEmpty)
+    }
+
+    @Test("Subsequent refresh updates Live Activity")
+    func subsequentRefreshUpdatesLiveActivity() async throws {
+        let referenceDate = Date(timeIntervalSince1970: 6_000_000)
+        let (viewModel, store, spy, date) = try makeViewModel(referenceDate: referenceDate)
+
+        let first = TaskItem(content: "Focus work", creationDate: date)
+        try store.save(task: first)
+
+        try await viewModel.refresh(referenceDate: date)
+
+        let second = TaskItem(content: "Design review", creationDate: date.addingTimeInterval(60))
+        try store.save(task: second)
+
+        try await viewModel.refresh(referenceDate: date)
+
+        #expect(spy.startedActivities.count == 1)
+        #expect(spy.updatedActivities.count == 1)
+        #expect(spy.endedActivities.isEmpty)
+    }
+
+    @Test("Refresh ends Live Activity when no active tasks remain")
+    func refreshEndsLiveActivityWhenNoActiveTasksRemain() async throws {
+        let referenceDate = Date(timeIntervalSince1970: 6_000_000)
+        let (viewModel, store, spy, date) = try makeViewModel(referenceDate: referenceDate)
+
+        let task = TaskItem(content: "Focus work", creationDate: date)
+        try store.save(task: task)
+
+        try await viewModel.refresh(referenceDate: date)
+
+        task.isCompleted = true
+        try store.save(task: task)
+        try await viewModel.refresh(referenceDate: date)
+
+        #expect(spy.startedActivities.count == 1)
+        #expect(spy.updatedActivities.count == 0)
+        #expect(spy.endedActivities == [.completedAllTasks])
+    }
+}
+
+@Suite("History ViewModel Tests")
+@MainActor
+struct HistoryViewModelTests {
+
+    @Test("Load history groups completed tasks by day")
+    func loadHistoryGroupsCompletedTasksByDay() async throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = calendar.timeZone
+        formatter.dateStyle = .medium
+
+        let container = try ModelContainer(for: TaskItem.self,
+                                           configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let store = TaskStore(modelContext: container.mainContext, calendar: calendar)
+        let viewModel = HistoryViewModel(store: store,
+                                         calendar: calendar,
+                                         dateFormatter: formatter)
+
+        let base = Date(timeIntervalSince1970: 1_000_000)
+        let todayStart = calendar.startOfDay(for: base)
+        let yesterdayStart = calendar.date(byAdding: .day, value: -1, to: todayStart)!
+
+        let todayMorning = calendar.date(byAdding: .hour, value: 9, to: todayStart)!
+        let todayAfternoon = calendar.date(byAdding: .hour, value: 15, to: todayStart)!
+        let yesterdayNoon = calendar.date(byAdding: .hour, value: 12, to: yesterdayStart)!
+
+        let todayFirst = TaskItem(content: "Plan roadmap", creationDate: todayMorning, isCompleted: true)
+        let todaySecond = TaskItem(content: "Write copy", creationDate: todayAfternoon, isCompleted: true)
+        let yesterdayTask = TaskItem(content: "Ship beta", creationDate: yesterdayNoon, isCompleted: true)
+        let incomplete = TaskItem(content: "Keep working", creationDate: todayMorning, isCompleted: false)
+
+        try store.save(task: todayFirst)
+        try store.save(task: todaySecond)
+        try store.save(task: yesterdayTask)
+        try store.save(task: incomplete)
+
+        try await viewModel.loadHistory()
+
+        #expect(viewModel.isEmpty == false)
+        #expect(viewModel.sections.count == 2)
+
+        let firstSection = viewModel.sections[0]
+        let secondSection = viewModel.sections[1]
+
+        #expect(calendar.isDate(firstSection.date, inSameDayAs: todayStart))
+        let firstContents = firstSection.tasks.map(\.content)
+        #expect(firstContents == ["Plan roadmap", "Write copy"])
+        #expect(firstSection.title == formatter.string(from: todayStart))
+
+        #expect(calendar.isDate(secondSection.date, inSameDayAs: yesterdayStart))
+        let secondContents = secondSection.tasks.map(\.content)
+        #expect(secondContents == ["Ship beta"])
+        #expect(secondSection.title == formatter.string(from: yesterdayStart))
+    }
+
+    @Test("Empty history exposes empty state")
+    func emptyHistoryExposesEmptyState() async throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = calendar.timeZone
+        formatter.dateStyle = .medium
+
+        let container = try ModelContainer(for: TaskItem.self,
+                                           configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let store = TaskStore(modelContext: container.mainContext, calendar: calendar)
+        let viewModel = HistoryViewModel(store: store,
+                                         calendar: calendar,
+                                         dateFormatter: formatter)
+
+        try await viewModel.loadHistory()
+
+        #expect(viewModel.sections.isEmpty)
+        #expect(viewModel.isEmpty)
+    }
+
+    @Test("Section count description reflects localized total")
+    func sectionCountDescriptionReflectsLocalizedTotal() async throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = calendar.timeZone
+        formatter.dateStyle = .medium
+
+        let container = try ModelContainer(for: TaskItem.self,
+                                           configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let store = TaskStore(modelContext: container.mainContext, calendar: calendar)
+        let viewModel = HistoryViewModel(store: store,
+                                         calendar: calendar,
+                                         dateFormatter: formatter)
+
+        let date = Date(timeIntervalSince1970: 1_111_111)
+        let first = TaskItem(content: "Read notes", creationDate: date, isCompleted: true)
+        let second = TaskItem(content: "Write summary", creationDate: date.addingTimeInterval(300), isCompleted: true)
+
+        try store.save(task: first)
+        try store.save(task: second)
+
+        try await viewModel.loadHistory()
+
+        guard let section = viewModel.sections.first else {
+            Issue.record("Expected at least one history section")
+            return
+        }
+
+        #expect(viewModel.countDescription(for: section) == "2 条完成记录")
+    }
+}
+
+@Suite("History Navigation State")
+@MainActor
+struct HistoryNavigationStateTests {
+
+    @Test("Show history toggles presentation flag")
+    func showHistoryTogglesPresentationFlag() {
+        let navigation = HistoryNavigationState()
+
+        #expect(navigation.isShowingHistory == false)
+
+        navigation.showHistory()
+
+        #expect(navigation.isShowingHistory)
+    }
+
+    @Test("Dismiss history resets presentation flag")
+    func dismissHistoryResetsPresentationFlag() {
+        let navigation = HistoryNavigationState()
+        navigation.showHistory()
+        navigation.dismissHistory()
+
+        #expect(navigation.isShowingHistory == false)
     }
 }
 

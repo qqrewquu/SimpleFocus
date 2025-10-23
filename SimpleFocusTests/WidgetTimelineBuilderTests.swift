@@ -62,7 +62,6 @@ struct WidgetTimelineBuilderTests {
 
 // MARK: - Test Doubles
 
-@MainActor
 private final class StubEncouragementProvider: EncouragementProviding {
     let stubMessage = EncouragementMessage(message: "All set for today",
                                            encouragement: "Rest well and come back tomorrow.")

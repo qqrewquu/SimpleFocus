@@ -82,6 +82,36 @@ final class TaskStore {
         return try modelContext.fetch(descriptor)
     }
 
+    func fetchTasksForToday(referenceDate: Date = Date()) async throws -> [TaskItem] {
+        let startOfDay = calendar.startOfDay(for: referenceDate)
+        guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else {
+            return []
+        }
+
+        let predicate = #Predicate<TaskItem> {
+            $0.creationDate >= startOfDay &&
+            $0.creationDate < endOfDay
+        }
+
+        var descriptor = FetchDescriptor<TaskItem>(predicate: predicate,
+                                                   sortBy: [SortDescriptor(\TaskItem.creationDate, order: .forward)])
+        descriptor.fetchLimit = 0
+
+        return try modelContext.fetch(descriptor)
+    }
+
+    func fetchCompletedTasks() async throws -> [TaskItem] {
+        let predicate = #Predicate<TaskItem> {
+            $0.isCompleted == true
+        }
+
+        var descriptor = FetchDescriptor<TaskItem>(predicate: predicate,
+                                                   sortBy: [SortDescriptor(\TaskItem.creationDate, order: .reverse)])
+        descriptor.fetchLimit = 0
+
+        return try modelContext.fetch(descriptor)
+    }
+
     private func countTasks(for referenceDate: Date) throws -> Int {
         let startOfDay = calendar.startOfDay(for: referenceDate)
         guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else {
@@ -102,9 +132,14 @@ final class TaskStore {
 
 extension TaskStore {
     static func makeSharedStore() throws -> TaskStore {
-        guard let sharedURL = AppGroup.containerURL()?.appending(path: "SimpleFocus.store") else {
-            throw NSError(domain: "TaskStore", code: -1, userInfo: [NSLocalizedDescriptionKey: "Unable to locate shared App Group container."])
+        guard let containerURL = AppGroup.containerURL() else {
+            throw NSError(domain: "TaskStore",
+                          code: -1,
+                          userInfo: [NSLocalizedDescriptionKey: "Unable to locate shared App Group container."])
         }
+
+        let sharedURL = containerURL.appending(path: "SimpleFocus.sqlite", directoryHint: .notDirectory)
+        print("[SimpleFocus] Using shared store at \(sharedURL.path(percentEncoded: false))")
 
         let configuration = ModelConfiguration(url: sharedURL)
         let container = try ModelContainer(for: TaskItem.self, configurations: configuration)
