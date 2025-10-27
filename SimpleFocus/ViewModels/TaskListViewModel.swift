@@ -59,6 +59,9 @@ final class TaskListViewModel: ObservableObject {
         if let controller = liveActivityController {
             do {
                 let todaysTasks = try await store.fetchTasksForToday(referenceDate: referenceDate)
+                #if DEBUG
+                print("[LiveActivity] refreshing with tasks:", todaysTasks.map(\.content))
+                #endif
                 try await controller.handleTasksChanged(referenceDate: referenceDate, tasks: todaysTasks)
             } catch {
                 #if DEBUG
@@ -70,7 +73,12 @@ final class TaskListViewModel: ObservableObject {
                         print("[LiveActivity] Live Activity 功能未启用。");
                     }
                 } else {
-                    print("[LiveActivity] Failed to update: \(error)")
+                    let message = String(describing: error)
+                    if message.contains("unsupportedTarget") {
+                        print("[LiveActivity] 系统返回 unsupportedTarget（该运行时目前无法展示 Live Activity）。")
+                    } else {
+                        print("[LiveActivity] Failed to update: \(message)")
+                    }
                 }
                 #endif
             }

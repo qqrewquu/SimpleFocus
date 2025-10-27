@@ -21,11 +21,11 @@ final class SimpleFocusLiveActivityManager: LiveActivityManaging {
 
     func startActivity(with state: LiveActivityContentState) async throws {
         let info = ActivityAuthorizationInfo()
+        #if DEBUG
+        print("[LiveActivity] areActivitiesEnabled=\(info.areActivitiesEnabled)")
+        #endif
         guard info.areActivitiesEnabled else {
             throw LiveActivityManagerError.activitiesDisabled
-        }
-        if info.activityAuthorizationStatus != .approved {
-            throw LiveActivityManagerError.unsupportedTarget
         }
 
         let attributes = SimpleFocusActivityAttributes()
