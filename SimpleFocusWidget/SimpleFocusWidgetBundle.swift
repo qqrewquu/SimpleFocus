@@ -12,5 +12,8 @@ import SwiftUI
 struct SimpleFocusWidgetBundle: WidgetBundle {
     var body: some Widget {
         SimpleFocusWidget()
+        if #available(iOS 17.0, *) {
+            SimpleFocusWidgetLiveActivity()
+        }
     }
 }
