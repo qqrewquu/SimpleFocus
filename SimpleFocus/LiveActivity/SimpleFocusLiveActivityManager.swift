@@ -28,10 +28,21 @@ final class SimpleFocusLiveActivityManager: LiveActivityManaging {
             throw LiveActivityManagerError.activitiesDisabled
         }
 
-        let attributes = SimpleFocusActivityAttributes()
-        let contentState = SimpleFocusActivityAttributes.ContentState(from: state)
-        let content = ActivityContent(state: contentState, staleDate: nil)
-        activity = try Activity.request(attributes: attributes, content: content)
+        do {
+            let attributes = SimpleFocusActivityAttributes()
+            let contentState = SimpleFocusActivityAttributes.ContentState(from: state)
+            let content = ActivityContent(state: contentState, staleDate: nil)
+            let requested = try Activity.request(attributes: attributes, content: content)
+            activity = requested
+            #if DEBUG
+            print("[LiveActivity] request success, id=\(requested.id)")
+            #endif
+        } catch {
+            #if DEBUG
+            print("[LiveActivity] request failed: \(error)")
+            #endif
+            throw error
+        }
     }
 
     func updateActivity(with state: LiveActivityContentState) async throws {
@@ -39,9 +50,19 @@ final class SimpleFocusLiveActivityManager: LiveActivityManaging {
             try await startActivity(with: state)
             return
         }
-        let contentState = SimpleFocusActivityAttributes.ContentState(from: state)
-        let content = ActivityContent(state: contentState, staleDate: nil)
-        try await activity.update(content)
+        do {
+            let contentState = SimpleFocusActivityAttributes.ContentState(from: state)
+            let content = ActivityContent(state: contentState, staleDate: nil)
+            try await activity.update(content)
+            #if DEBUG
+            print("[LiveActivity] update success, id=\(activity.id)")
+            #endif
+        } catch {
+            #if DEBUG
+            print("[LiveActivity] update failed: \(error)")
+            #endif
+            throw error
+        }
     }
 
     func endActivity(reason: LiveActivityEndReason) async throws {

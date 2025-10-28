@@ -8,6 +8,9 @@
 import Combine
 import Foundation
 import SwiftUI
+#if canImport(ActivityKit)
+import ActivityKit
+#endif
 
 @MainActor
 final class TaskListViewModel: ObservableObject {
@@ -63,6 +66,14 @@ final class TaskListViewModel: ObservableObject {
                 print("[LiveActivity] refreshing with tasks:", todaysTasks.map(\.content))
                 #endif
                 try await controller.handleTasksChanged(referenceDate: referenceDate, tasks: todaysTasks)
+                #if canImport(ActivityKit)
+                if #available(iOS 17.0, *) {
+                    let activities = Activity<SimpleFocusActivityAttributes>.activities
+                    #if DEBUG
+                    print("[LiveActivity] active IDs:", activities.map(\.id))
+                    #endif
+                }
+                #endif
             } catch {
                 #if DEBUG
                 if let managerError = error as? LiveActivityManagerError {
