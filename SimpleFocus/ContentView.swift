@@ -186,9 +186,6 @@ struct ContentView: View {
                                        onComplete: { completeTask(task) },
                                        onSubmit: {
                                            Task { _ = await commitEditing() }
-                                       },
-                                       onFocusLost: {
-                                           handleFocusLost(for: task.id)
                                        })
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
@@ -322,7 +319,6 @@ private struct EditingTaskRow: View {
     let focusBinding: FocusState<UUID?>.Binding
     let onComplete: () -> Void
     let onSubmit: () -> Void
-    let onFocusLost: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -335,11 +331,6 @@ private struct EditingTaskRow: View {
                     .submitLabel(.done)
                     .focused(focusBinding, equals: task.id)
                     .onSubmit(onSubmit)
-                    .onChange(of: focusBinding.wrappedValue) { newValue in
-                        if newValue != task.id {
-                            onFocusLost()
-                        }
-                    }
                     .onChange(of: text) { newValue in
                         if newValue.count > TaskContentPolicy.maxLength {
                             text = String(newValue.prefix(TaskContentPolicy.maxLength))
@@ -460,10 +451,6 @@ private extension ContentView {
         Task { await activateEditing(for: task) }
     }
 
-    func handleFocusLost(for taskID: UUID) {
-        Task { await commitEditingIfNeeded(for: taskID) }
-    }
-
     @MainActor
     private func activateEditing(for task: TaskItem) async {
         print("[InlineEdit] activateEditing start for task=\(task.id), current=\(editingTask?.id.uuidString ?? "nil")")
@@ -533,13 +520,6 @@ private extension ContentView {
             print("[InlineEdit] commit failed: \(error)")
             return false
         }
-    }
-
-    @MainActor
-    private func commitEditingIfNeeded(for taskID: UUID) async {
-        print("[InlineEdit] focus lost callback for task=\(taskID), current editing=\(editingTask?.id.uuidString ?? "nil")")
-        guard editingTask?.id == taskID else { return }
-        _ = await commitEditing()
     }
 
     @MainActor
