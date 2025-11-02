@@ -6,56 +6,21 @@
 //
 
 import ActivityKit
+import os
 import SwiftUI
 import WidgetKit
-
-struct LiveActivityDisplayTask: Codable, Hashable, Identifiable {
-    let id: UUID
-    let content: String
-    let isCompleted: Bool
-}
-
-struct LiveActivityContentState: Codable, Hashable {
-    let displayedTasks: [LiveActivityDisplayTask]
-    let totalTasks: Int
-    let completedTasks: Int
-    let remainingTasks: Int
-    let progress: Double
-    let statusMessage: String
-}
-
-@available(iOS 17.0, *)
-struct SimpleFocusActivityAttributes: ActivityAttributes {
-    public struct ContentState: Codable, Hashable {
-        public let tasks: [LiveActivityDisplayTask]
-        public let totalTasks: Int
-        public let completedTasks: Int
-        public let remainingTasks: Int
-        public let progress: Double
-        public let statusMessage: String
-
-        init(from state: LiveActivityContentState) {
-            tasks = state.displayedTasks
-            totalTasks = state.totalTasks
-            completedTasks = state.completedTasks
-            remainingTasks = state.remainingTasks
-            progress = state.progress
-            statusMessage = state.statusMessage
-        }
-    }
-
-    var title: String = "SimpleFocus"
-}
 
 struct SimpleFocusWidgetLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: SimpleFocusActivityAttributes.self) { context in
-            LiveActivityLockScreenView(state: context.state)
+            widgetLogger.debug("Rendering lock screen with \(context.state.tasks.count) tasks")
+            return LiveActivityLockScreenView(state: context.state)
                 .activityBackgroundTint(Color.black.opacity(0.6))
                 .activitySystemActionForegroundColor(Color.white)
 
         } dynamicIsland: { context in
-            DynamicIsland(
+            widgetLogger.debug("Rendering dynamic island with \(context.state.tasks.count) tasks")
+            return DynamicIsland(
                 expanded: {
                     DynamicIslandExpandedRegion(.leading) {
                         CompactTaskListView(tasks: Array(context.state.tasks.prefix(1)))
@@ -187,5 +152,19 @@ extension LiveActivityContentState {
     SimpleFocusWidgetLiveActivity()
 } contentStates: {
     SimpleFocusActivityAttributes.ContentState(from: .previewState)
+}
+#endif
+
+private let widgetLogger = Logger(subsystem: "com.zifengguo.SimpleFocus", category: "LiveActivityWidget")
+
+#if DEBUG
+private struct DebugLogView: View {
+    init(_ message: @autoclosure () -> String) {
+        print(message())
+    }
+
+    var body: some View {
+        EmptyView()
+    }
 }
 #endif

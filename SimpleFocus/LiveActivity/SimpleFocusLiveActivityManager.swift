@@ -50,19 +50,12 @@ final class SimpleFocusLiveActivityManager: LiveActivityManaging {
             try await startActivity(with: state)
             return
         }
-        do {
-            let contentState = SimpleFocusActivityAttributes.ContentState(from: state)
-            let content = ActivityContent(state: contentState, staleDate: nil)
-            try await activity.update(content)
-            #if DEBUG
-            print("[LiveActivity] update success, id=\(activity.id)")
-            #endif
-        } catch {
-            #if DEBUG
-            print("[LiveActivity] update failed: \(error)")
-            #endif
-            throw error
-        }
+        let contentState = SimpleFocusActivityAttributes.ContentState(from: state)
+        let content = ActivityContent(state: contentState, staleDate: nil)
+        await activity.update(content)
+        #if DEBUG
+        print("[LiveActivity] update success, id=\(activity.id)")
+        #endif
     }
 
     func endActivity(reason: LiveActivityEndReason) async throws {

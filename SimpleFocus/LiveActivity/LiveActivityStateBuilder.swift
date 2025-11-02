@@ -7,21 +7,6 @@
 
 import Foundation
 
-struct LiveActivityDisplayTask: Equatable, Codable, Hashable, Identifiable {
-    let id: UUID
-    let content: String
-    let isCompleted: Bool
-}
-
-struct LiveActivityContentState: Equatable {
-    let displayedTasks: [LiveActivityDisplayTask]
-    let totalTasks: Int
-    let completedTasks: Int
-    let remainingTasks: Int
-    let progress: Double
-    let statusMessage: String
-}
-
 final class LiveActivityStateBuilder {
     private let calendar: Calendar
     private let dailyLimit: Int
