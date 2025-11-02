@@ -482,8 +482,8 @@ private extension ContentView {
         editingErrorMessage = nil
         focusedTaskID = task.id
         skipAutoCommit = true
-        DispatchQueue.main.async { [weak self] in
-            self?.skipAutoCommit = false
+        DispatchQueue.main.async { [self] in
+            self.skipAutoCommit = false
         }
         print("[InlineEdit] now editing task=\(task.id), text=\(task.content)")
     }
