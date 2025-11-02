@@ -14,7 +14,7 @@ struct ContentView: View {
     @State private var editingText: String = ""
     @State private var editingOriginalText: String = ""
     @State private var editingErrorMessage: String?
-    @State private var skipAutoCommit = false
+    @State private var skipAutoCommitUntil: Date?
     @FocusState private var focusedTaskID: UUID?
 
 #if DEBUG
@@ -481,9 +481,9 @@ private extension ContentView {
         editingOriginalText = task.content
         editingErrorMessage = nil
         focusedTaskID = task.id
-        skipAutoCommit = true
-        DispatchQueue.main.async { [self] in
-            self.skipAutoCommit = false
+        skipAutoCommitUntil = Date().addingTimeInterval(0.3)
+        if let deadline = skipAutoCommitUntil {
+            print("[InlineEdit] set skip window until \(deadline)")
         }
         print("[InlineEdit] now editing task=\(task.id), text=\(task.content)")
     }
@@ -491,8 +491,8 @@ private extension ContentView {
     @MainActor
     private func handleFocusLost(for taskID: UUID) {
         guard let current = editingTask, current.id == taskID else { return }
-        if skipAutoCommit {
-            print("[InlineEdit] focus lost ignored (skip flag)")
+        if let deadline = skipAutoCommitUntil, Date() < deadline {
+            print("[InlineEdit] focus lost ignored (skip window active)")
             return
         }
         print("[InlineEdit] focus lost commit for task=\(taskID)")
@@ -557,6 +557,7 @@ private extension ContentView {
         editingOriginalText = ""
         editingErrorMessage = nil
         focusedTaskID = nil
+        skipAutoCommitUntil = nil
     }
 
 #if DEBUG
