@@ -466,12 +466,15 @@ private extension ContentView {
 
     @MainActor
     private func activateEditing(for task: TaskItem) async {
+        print("[InlineEdit] activateEditing start for task=\(task.id), current=\(editingTask?.id?.uuidString ?? "nil")")
         if editingTask?.id == task.id {
+            print("[InlineEdit] already editing same task, refocusing")
             focusedTaskID = task.id
             return
         }
 
         if let current = editingTask, current.id != task.id {
+            print("[InlineEdit] switching from task=\(current.id) to \(task.id), committing current first")
             let success = await commitEditing()
             guard success else { return }
         }
@@ -481,11 +484,13 @@ private extension ContentView {
         editingOriginalText = task.content
         editingErrorMessage = nil
         focusedTaskID = task.id
+        print("[InlineEdit] now editing task=\(task.id), text=\(task.content)")
     }
 
     @MainActor
     @discardableResult
     func commitEditing() async -> Bool {
+        print("[InlineEdit] commit requested, current task=\(editingTask?.id?.uuidString ?? "nil") text=\(editingText)")
         guard let task = editingTask else {
             return true
         }
@@ -494,12 +499,14 @@ private extension ContentView {
         if trimmed.isEmpty {
             editingErrorMessage = "请输入任务内容"
             focusedTaskID = task.id
+            print("[InlineEdit] commit aborted: empty content")
             return false
         }
 
         let normalized = String(trimmed.prefix(TaskContentPolicy.maxLength))
         if normalized == editingOriginalText {
             endEditing()
+            print("[InlineEdit] commit skipped: no content change")
             return true
         }
 
@@ -508,24 +515,29 @@ private extension ContentView {
             WidgetCenter.shared.reloadAllTimelines()
             try await historyViewModel.loadHistory()
             endEditing()
+            print("[InlineEdit] commit success: updated to \(normalized)")
             return true
         } catch TaskInputError.emptyContent {
             editingErrorMessage = "请输入任务内容"
             focusedTaskID = task.id
+            print("[InlineEdit] commit failed: empty content error thrown")
             return false
         } catch TaskUpdateError.completedTask {
             editingErrorMessage = "已完成的任务无法编辑"
             focusedTaskID = task.id
+            print("[InlineEdit] commit failed: completed task error")
             return false
         } catch {
             editingErrorMessage = "保存失败，请重试"
             focusedTaskID = task.id
+            print("[InlineEdit] commit failed: \(error)")
             return false
         }
     }
 
     @MainActor
     private func commitEditingIfNeeded(for taskID: UUID) async {
+        print("[InlineEdit] focus lost callback for task=\(taskID), current editing=\(editingTask?.id?.uuidString ?? "nil")")
         guard editingTask?.id == taskID else { return }
         _ = await commitEditing()
     }
@@ -533,6 +545,7 @@ private extension ContentView {
     @MainActor
     func endEditing() {
         editingTask = nil
+        print("[InlineEdit] endEditing reset state")
         editingText = ""
         editingOriginalText = ""
         editingErrorMessage = nil
