@@ -14,6 +14,7 @@ struct ContentView: View {
     @State private var editingText: String = ""
     @State private var editingOriginalText: String = ""
     @State private var editingErrorMessage: String?
+    @State private var skipAutoCommit = false
     @FocusState private var focusedTaskID: UUID?
 
 #if DEBUG
@@ -186,6 +187,9 @@ struct ContentView: View {
                                        onComplete: { completeTask(task) },
                                        onSubmit: {
                                            Task { _ = await commitEditing() }
+                                       },
+                                       onFocusLost: {
+                                           handleFocusLost(for: task.id)
                                        })
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
@@ -319,6 +323,7 @@ private struct EditingTaskRow: View {
     let focusBinding: FocusState<UUID?>.Binding
     let onComplete: () -> Void
     let onSubmit: () -> Void
+    let onFocusLost: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -331,6 +336,11 @@ private struct EditingTaskRow: View {
                     .submitLabel(.done)
                     .focused(focusBinding, equals: task.id)
                     .onSubmit(onSubmit)
+                    .onChange(of: focusBinding.wrappedValue) { newValue in
+                        if newValue != task.id {
+                            onFocusLost()
+                        }
+                    }
                     .onChange(of: text) { newValue in
                         if newValue.count > TaskContentPolicy.maxLength {
                             text = String(newValue.prefix(TaskContentPolicy.maxLength))
@@ -471,7 +481,24 @@ private extension ContentView {
         editingOriginalText = task.content
         editingErrorMessage = nil
         focusedTaskID = task.id
+        skipAutoCommit = true
+        DispatchQueue.main.async { [weak self] in
+            self?.skipAutoCommit = false
+        }
         print("[InlineEdit] now editing task=\(task.id), text=\(task.content)")
+    }
+
+    @MainActor
+    private func handleFocusLost(for taskID: UUID) {
+        guard let current = editingTask, current.id == taskID else { return }
+        if skipAutoCommit {
+            print("[InlineEdit] focus lost ignored (skip flag)")
+            return
+        }
+        print("[InlineEdit] focus lost commit for task=\(taskID)")
+        Task {
+            _ = await commitEditing()
+        }
     }
 
     @MainActor
