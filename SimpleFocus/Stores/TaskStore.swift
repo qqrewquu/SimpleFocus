@@ -124,6 +124,16 @@ final class TaskStore {
         return try modelContext.fetch(descriptor)
     }
 
+    func task(withID id: UUID) throws -> TaskItem? {
+        let predicate = #Predicate<TaskItem> {
+            $0.id == id
+        }
+
+        var descriptor = FetchDescriptor<TaskItem>(predicate: predicate)
+        descriptor.fetchLimit = 1
+        return try modelContext.fetch(descriptor).first
+    }
+
     func updateTask(_ task: TaskItem, with content: String) throws {
         guard task.isCompleted == false else {
             throw TaskUpdateError.completedTask

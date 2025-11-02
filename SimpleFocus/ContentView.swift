@@ -180,7 +180,7 @@ struct ContentView: View {
                 ForEach(viewModel.tasks) { task in
                     if let editingTask, editingTask.id == task.id {
                         EditingTaskRow(task: task,
-                                       isCompleting: viewModel.recentlyCompletedTaskIDs.contains(task.id),
+                                       isPending: viewModel.isPendingCompletion(task.id),
                                        text: $editingText,
                                        errorMessage: editingErrorMessage,
                                        focusBinding: $focusedTaskID,
@@ -195,7 +195,7 @@ struct ContentView: View {
                         .listRowSeparator(.hidden)
                     } else {
                         DisplayTaskRow(task: task,
-                                        isCompleting: viewModel.recentlyCompletedTaskIDs.contains(task.id),
+                                        isPending: viewModel.isPendingCompletion(task.id),
                                         onComplete: { completeTask(task) },
                                         onEdit: { beginEditing(task) })
                         .listRowBackground(Color.clear)
@@ -272,7 +272,7 @@ private struct PreviewContainerView: View {
 
 private struct DisplayTaskRow: View {
     let task: TaskItem
-    let isCompleting: Bool
+    let isPending: Bool
     let onComplete: () -> Void
     let onEdit: () -> Void
 
@@ -290,8 +290,8 @@ private struct DisplayTaskRow: View {
                 .accessibilityHint("双击以修改内容")
         }
         .padding(.vertical, 12)
-        .opacity(isCompleting ? 0.2 : 1)
-        .animation(.easeInOut(duration: 0.25), value: isCompleting)
+        .opacity(isPending ? 0.3 : 1)
+        .animation(.easeInOut(duration: 0.25), value: isPending)
         .transition(.opacity.combined(with: .move(edge: .top)))
     }
 
@@ -303,12 +303,12 @@ private struct DisplayTaskRow: View {
                     .frame(width: 28, height: 28)
                     .background(
                         Circle()
-                            .fill(isCompleting ? AppTheme.primary : .clear)
+                            .fill(isPending ? AppTheme.primary : .clear)
                     )
                 Image(systemName: "checkmark")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(AppTheme.textPrimary)
-                    .opacity(isCompleting ? 1 : 0)
+                    .opacity(isPending ? 1 : 0)
             }
         }
         .buttonStyle(.plain)
@@ -317,7 +317,7 @@ private struct DisplayTaskRow: View {
 
 private struct EditingTaskRow: View {
     let task: TaskItem
-    let isCompleting: Bool
+    let isPending: Bool
     @Binding var text: String
     let errorMessage: String?
     let focusBinding: FocusState<UUID?>.Binding
@@ -359,7 +359,8 @@ private struct EditingTaskRow: View {
             }
         }
         .padding(.vertical, 12)
-        .animation(.easeInOut(duration: 0.25), value: isCompleting)
+        .opacity(isPending ? 0.3 : 1)
+        .animation(.easeInOut(duration: 0.25), value: isPending)
         .transition(.opacity.combined(with: .move(edge: .top)))
     }
 
@@ -371,12 +372,12 @@ private struct EditingTaskRow: View {
                     .frame(width: 28, height: 28)
                     .background(
                         Circle()
-                            .fill(isCompleting ? AppTheme.primary : .clear)
+                            .fill(isPending ? AppTheme.primary : .clear)
                     )
                 Image(systemName: "checkmark")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(AppTheme.textPrimary)
-                    .opacity(isCompleting ? 1 : 0)
+                    .opacity(isPending ? 1 : 0)
             }
         }
         .buttonStyle(.plain)
@@ -445,14 +446,12 @@ private extension ContentView {
                 let success = await commitEditing()
                 guard success else { return }
             }
-            do {
-                try await viewModel.complete(task: task)
-                try await viewModel.refresh(animate: true)
-                viewModel.clearCompletionAnimation(for: task.id)
-                WidgetCenter.shared.reloadAllTimelines()
-                try await historyViewModel.loadHistory()
-            } catch {
-                assertionFailure("Failed to complete task: \(error)")
+            viewModel.toggleCompletion(for: task) { [weak self] in
+                guard let self else { return }
+                Task {
+                    WidgetCenter.shared.reloadAllTimelines()
+                    try? await self.historyViewModel.loadHistory()
+                }
             }
         }
     }

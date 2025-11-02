@@ -19,6 +19,8 @@ final class TaskListViewModel: ObservableObject {
     @Published private(set) var recentlyCompletedTaskIDs: Set<UUID> = []
     @Published private(set) var canAddTask: Bool = true
     @Published private(set) var limitState: EncouragementMessage?
+    @Published private(set) var pendingCompletionTaskIDs: Set<UUID> = []
+
 
     var hasTasks: Bool {
         !tasks.isEmpty
@@ -30,15 +32,20 @@ final class TaskListViewModel: ObservableObject {
     private let calendar: Calendar
     private var liveActivityController: LiveActivityLifecycleController?
     private var currentDayAnchor: Date?
+    private var pendingCompletionTasks: [UUID: Task<Void, Never>] = [:]
+    private var pendingCompletionHandlers: [UUID: () -> Void] = [:]
+    private let completionDelay: TimeInterval
 
     init(store: TaskStore,
          celebrationProvider: CelebrationProviding? = nil,
          encouragementProvider: EncouragementProviding? = nil,
+         completionDelay: TimeInterval = 1.5,
          calendar: Calendar = .current,
          liveActivityController: LiveActivityLifecycleController? = nil) {
         self.store = store
         self.celebrationProvider = celebrationProvider ?? CelebrationProvider()
         self.encouragementProvider = encouragementProvider ?? EncouragementProvider()
+        self.completionDelay = completionDelay
         self.calendar = calendar
         self.liveActivityController = liveActivityController
     }
@@ -46,6 +53,103 @@ final class TaskListViewModel: ObservableObject {
     func setLiveActivityController(_ controller: LiveActivityLifecycleController) {
         liveActivityController = controller
     }
+
+    func toggleCompletion(for task: TaskItem,
+                          referenceDate: Date = Date(),
+                          onFinalize: (() -> Void)? = nil) {
+        let id = task.id
+        if pendingCompletionTaskIDs.contains(id) {
+            cancelPendingCompletion(for: id)
+            return
+        }
+
+        pendingCompletionTaskIDs.insert(id)
+        recentlyCompletedTaskIDs.insert(id)
+        if let onFinalize {
+            pendingCompletionHandlers[id] = onFinalize
+        } else {
+            pendingCompletionHandlers.removeValue(forKey: id)
+        }
+
+        let pendingTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await Task.sleep(nanoseconds: UInt64(self.completionDelay * 1_000_000_000))
+                try Task.checkCancellation()
+                await self.finalizePendingCompletion(taskID: id, referenceDate: referenceDate)
+            } catch is CancellationError {
+                return
+            } catch {
+                await self.handleCompletionFailure(for: id, error: error)
+            }
+        }
+
+        pendingCompletionTasks[id] = pendingTask
+    }
+
+    func isPendingCompletion(_ id: UUID) -> Bool {
+        pendingCompletionTaskIDs.contains(id)
+    }
+
+    private func finalizePendingCompletion(taskID: UUID,
+                                           referenceDate: Date) async {
+        do {
+            guard let task = try store.task(withID: taskID) else {
+                throw NSError(domain: "TaskListViewModel",
+                              code: -1,
+                              userInfo: [NSLocalizedDescriptionKey: "Task not found for completion"])
+            }
+
+            try store.markTaskCompleted(task)
+            pendingCompletionTaskIDs.remove(taskID)
+            pendingCompletionTasks.removeValue(forKey: taskID)
+            let handler = pendingCompletionHandlers.removeValue(forKey: taskID)
+
+            try await refresh(referenceDate: referenceDate, animate: true)
+
+            if let handler {
+                handler()
+            }
+        } catch {
+            handleCompletionFailure(for: taskID, error: error)
+        }
+    }
+
+    private func cancelPendingCompletion(for id: UUID) {
+        pendingCompletionTasks[id]?.cancel()
+        pendingCompletionTasks.removeValue(forKey: id)
+        pendingCompletionHandlers.removeValue(forKey: id)
+        pendingCompletionTaskIDs.remove(id)
+        recentlyCompletedTaskIDs.remove(id)
+    }
+
+    private func cancelAllPendingCompletions() {
+        for task in pendingCompletionTasks.values {
+            task.cancel()
+        }
+        pendingCompletionTasks.removeAll()
+        pendingCompletionHandlers.removeAll()
+        pendingCompletionTaskIDs.removeAll()
+    }
+
+    private func prunePendingCompletions(validIDs: Set<UUID>) {
+        let invalid = pendingCompletionTaskIDs.subtracting(validIDs)
+        for id in invalid {
+            cancelPendingCompletion(for: id)
+        }
+    }
+
+    @MainActor
+    private func handleCompletionFailure(for id: UUID, error: Error) {
+        pendingCompletionTasks.removeValue(forKey: id)
+        pendingCompletionHandlers.removeValue(forKey: id)
+        pendingCompletionTaskIDs.remove(id)
+        recentlyCompletedTaskIDs.remove(id)
+        #if DEBUG
+        print("[TaskListViewModel] Failed to finalize completion for \(id): \(error)")
+        #endif
+    }
+
 
     func refresh(referenceDate: Date = Date(), animate: Bool = false) async throws {
         let dayAnchor = calendar.startOfDay(for: referenceDate)
@@ -58,6 +162,7 @@ final class TaskListViewModel: ObservableObject {
             recentlyCompletedTaskIDs.removeAll()
             celebration = nil
             limitState = nil
+            cancelAllPendingCompletions()
 
             if let controller = liveActivityController, controller.isActivityRunning {
                 try await controller.endActivity(reason: .dateRolledOver)
@@ -81,6 +186,7 @@ final class TaskListViewModel: ObservableObject {
         }
 
         pruneCompletedAnimationFlags()
+        prunePendingCompletions(validIDs: Set(fetched.map(\.id)))
         try updateAddAvailability(referenceDate: referenceDate)
 
         if let controller = liveActivityController {
@@ -120,11 +226,6 @@ final class TaskListViewModel: ObservableObject {
         }
     }
 
-    func complete(task: TaskItem) async throws {
-        try store.markTaskCompleted(task)
-        recentlyCompletedTaskIDs.insert(task.id)
-    }
-
     func edit(task: TaskItem, newContent: String, referenceDate: Date = Date()) async throws {
         let normalized = try normalizeContent(from: newContent)
         try store.updateTask(task, with: normalized)
@@ -141,6 +242,7 @@ final class TaskListViewModel: ObservableObject {
 
     func resetTodayTasks(referenceDate: Date = Date()) async throws {
         try store.clearTodayTasks(referenceDate: referenceDate)
+        cancelAllPendingCompletions()
         recentlyCompletedTaskIDs.removeAll()
         celebration = nil
         limitState = nil

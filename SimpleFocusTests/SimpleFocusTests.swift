@@ -241,3 +241,55 @@ struct TaskEditingViewModelTests {
         }
     }
 }
+
+@Suite("Task Completion Buffer Tests")
+@MainActor
+struct TaskCompletionBufferTests {
+
+    @Test("Task remains visible during completion buffer then finishes")
+    func taskCompletesAfterDelay() async throws {
+        let container = try ModelContainer(for: TaskItem.self,
+                                           configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let store = TaskStore(modelContext: container.mainContext)
+        let task = TaskItem(content: "Focus task")
+        try store.save(task: task)
+
+        let viewModel = TaskListViewModel(store: store, completionDelay: 0.05)
+        try await viewModel.refresh()
+
+        viewModel.toggleCompletion(for: task)
+
+        #expect(viewModel.isPendingCompletion(task.id))
+        #expect(viewModel.tasks.contains { $0.id == task.id })
+
+        try await Task.sleep(nanoseconds: 120_000_000)
+        try await Task.yield()
+
+        #expect(viewModel.tasks.isEmpty)
+        #expect(viewModel.pendingCompletionTaskIDs.isEmpty)
+    }
+
+    @Test("Toggling again within buffer cancels completion")
+    func togglingAgainCancelsPendingCompletion() async throws {
+        let container = try ModelContainer(for: TaskItem.self,
+                                           configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let store = TaskStore(modelContext: container.mainContext)
+        let task = TaskItem(content: "Undo task")
+        try store.save(task: task)
+
+        let viewModel = TaskListViewModel(store: store, completionDelay: 0.1)
+        try await viewModel.refresh()
+
+        viewModel.toggleCompletion(for: task)
+        #expect(viewModel.isPendingCompletion(task.id))
+
+        viewModel.toggleCompletion(for: task)
+        #expect(viewModel.isPendingCompletion(task.id) == false)
+
+        try await Task.sleep(nanoseconds: 150_000_000)
+        try await Task.yield()
+
+        #expect(viewModel.tasks.contains { $0.id == task.id })
+        #expect(viewModel.pendingCompletionTaskIDs.isEmpty)
+    }
+}
