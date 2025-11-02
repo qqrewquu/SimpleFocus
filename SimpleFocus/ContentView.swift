@@ -285,19 +285,14 @@ private struct DisplayTaskRow: View {
         HStack(spacing: 16) {
             completeButton
 
-            Button(action: onEdit) {
-                HStack {
-                    Text(task.content)
-                        .font(.system(size: 18))
-                        .foregroundColor(AppTheme.textPrimary)
-
-                    Spacer()
-                }
+            Text(task.content)
+                .font(.system(size: 18))
+                .foregroundColor(AppTheme.textPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("编辑任务：\(task.content)")
-            .accessibilityHint("双击以修改内容")
+                .onTapGesture(perform: onEdit)
+                .accessibilityLabel("编辑任务：\(task.content)")
+                .accessibilityHint("双击以修改内容")
         }
         .padding(.vertical, 12)
         .opacity(isCompleting ? 0.2 : 1)
