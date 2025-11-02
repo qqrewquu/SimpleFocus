@@ -7,11 +7,20 @@ struct ContentView: View {
     @StateObject private var addTaskViewModel: AddTaskViewModel
     @StateObject private var historyViewModel: HistoryViewModel
     @StateObject private var historyNavigation = HistoryNavigationState()
+
     @State private var isPresentingAddTask = false
+
+    @State private var editingTask: TaskItem?
+    @State private var editingText: String = ""
+    @State private var editingOriginalText: String = ""
+    @State private var editingErrorMessage: String?
+    @FocusState private var focusedTaskID: UUID?
+
 #if DEBUG
     @State private var isShowingResetAlert = false
 #endif
 
+    @MainActor
     init(store: TaskStore, liveActivityController: LiveActivityLifecycleController? = nil) {
         let taskListViewModel = TaskListViewModel(store: store)
         if let liveActivityController {
@@ -93,6 +102,15 @@ struct ContentView: View {
             HStack {
                 historyButton
                 Spacer()
+                if editingTask != nil {
+                    Button("完成") {
+                        Task {
+                            _ = await commitEditing()
+                        }
+                    }
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(AppTheme.primary)
+                }
 #if DEBUG
                 debugMenu
 #endif
@@ -122,7 +140,18 @@ struct ContentView: View {
 
     private var historyButton: some View {
         Button {
-            historyNavigation.showHistory()
+            if editingTask == nil {
+                historyNavigation.showHistory()
+            } else {
+                Task {
+                    let success = await commitEditing()
+                    if success {
+                        await MainActor.run {
+                            historyNavigation.showHistory()
+                        }
+                    }
+                }
+            }
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "clock.arrow.circlepath")
@@ -148,17 +177,45 @@ struct ContentView: View {
         if viewModel.hasTasks {
             List {
                 ForEach(viewModel.tasks) { task in
-                    TaskRow(task: task,
-                            isCompleting: viewModel.recentlyCompletedTaskIDs.contains(task.id)) {
-                        completeTask(task)
+                    if let editingTask, editingTask.id == task.id {
+                        EditingTaskRow(task: task,
+                                       isCompleting: viewModel.recentlyCompletedTaskIDs.contains(task.id),
+                                       text: $editingText,
+                                       errorMessage: editingErrorMessage,
+                                       focusBinding: $focusedTaskID,
+                                       onComplete: { completeTask(task) },
+                                       onSubmit: {
+                                           Task {
+                                               _ = await commitEditing()
+                                           }
+                                       },
+                                       onFocusLost: {
+                                           if self.editingTask?.id == task.id {
+                                               Task {
+                                                   _ = await commitEditing()
+                                               }
+                                           }
+                                       })
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                    } else {
+                        DisplayTaskRow(task: task,
+                                        isCompleting: viewModel.recentlyCompletedTaskIDs.contains(task.id),
+                                        onComplete: { completeTask(task) },
+                                        onEdit: { beginEditing(task) })
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                     }
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
                 }
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .background(Color.clear)
+            .onChange(of: editingText) { newValue in
+                if editingTask != nil && !newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    editingErrorMessage = nil
+                }
+            }
         } else if let limitState = viewModel.limitState {
             Spacer()
             LimitReachedView(limitState: limitState)
@@ -174,7 +231,18 @@ struct ContentView: View {
 
     private var addTaskButton: some View {
         Button {
-            isPresentingAddTask = true
+            if editingTask == nil {
+                isPresentingAddTask = true
+            } else {
+                Task {
+                    let success = await commitEditing()
+                    if success {
+                        await MainActor.run {
+                            isPresentingAddTask = true
+                        }
+                    }
+                }
+            }
         } label: {
             Image(systemName: "plus")
                 .font(.system(size: 28, weight: .bold))
@@ -207,40 +275,121 @@ private struct PreviewContainerView: View {
     }
 }
 
-private struct TaskRow: View {
+private struct DisplayTaskRow: View {
     let task: TaskItem
     let isCompleting: Bool
     let onComplete: () -> Void
+    let onEdit: () -> Void
 
     var body: some View {
         HStack(spacing: 16) {
-            Button(action: onComplete) {
-                ZStack {
-                    Circle()
-                        .stroke(AppTheme.textPrimary.opacity(0.9), lineWidth: 2)
-                        .frame(width: 28, height: 28)
-                        .background(
-                            Circle()
-                                .fill(isCompleting ? AppTheme.primary : .clear)
-                        )
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 16, weight: .semibold))
+            completeButton
+
+            Button(action: onEdit) {
+                HStack {
+                    Text(task.content)
+                        .font(.system(size: 18))
                         .foregroundColor(AppTheme.textPrimary)
-                        .opacity(isCompleting ? 1 : 0)
+
+                    Spacer()
                 }
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-
-            Text(task.content)
-                .font(.system(size: 18))
-                .foregroundColor(AppTheme.textPrimary)
-
-            Spacer()
+            .accessibilityLabel("编辑任务：\(task.content)")
+            .accessibilityHint("双击以修改内容")
         }
         .padding(.vertical, 12)
         .opacity(isCompleting ? 0.2 : 1)
         .animation(.easeInOut(duration: 0.25), value: isCompleting)
         .transition(.opacity.combined(with: .move(edge: .top)))
+    }
+
+    private var completeButton: some View {
+        Button(action: onComplete) {
+            ZStack {
+                Circle()
+                    .stroke(AppTheme.textPrimary.opacity(0.9), lineWidth: 2)
+                    .frame(width: 28, height: 28)
+                    .background(
+                        Circle()
+                            .fill(isCompleting ? AppTheme.primary : .clear)
+                    )
+                Image(systemName: "checkmark")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(AppTheme.textPrimary)
+                    .opacity(isCompleting ? 1 : 0)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct EditingTaskRow: View {
+    let task: TaskItem
+    let isCompleting: Bool
+    @Binding var text: String
+    let errorMessage: String?
+    let focusBinding: FocusState<UUID?>.Binding
+    let onComplete: () -> Void
+    let onSubmit: () -> Void
+    let onFocusLost: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 16) {
+                completeButton
+
+                TextField("编辑任务", text: $text)
+                    .font(.system(size: 18))
+                    .foregroundColor(AppTheme.textPrimary)
+                    .submitLabel(.done)
+                    .focused(focusBinding, equals: task.id)
+                    .onSubmit(onSubmit)
+                    .onChange(of: focusBinding.wrappedValue) { newValue in
+                        if newValue != task.id {
+                            onFocusLost()
+                        }
+                    }
+                    .onChange(of: text) { newValue in
+                        if newValue.count > TaskContentPolicy.maxLength {
+                            text = String(newValue.prefix(TaskContentPolicy.maxLength))
+                        }
+                    }
+                    .onAppear {
+                        focusBinding.wrappedValue = task.id
+                    }
+            }
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.footnote)
+                    .foregroundColor(.red.opacity(0.85))
+                    .padding(.leading, 44)
+            }
+        }
+        .padding(.vertical, 12)
+        .animation(.easeInOut(duration: 0.25), value: isCompleting)
+        .transition(.opacity.combined(with: .move(edge: .top)))
+    }
+
+    private var completeButton: some View {
+        Button(action: onComplete) {
+            ZStack {
+                Circle()
+                    .stroke(AppTheme.textPrimary.opacity(0.9), lineWidth: 2)
+                    .frame(width: 28, height: 28)
+                    .background(
+                        Circle()
+                            .fill(isCompleting ? AppTheme.primary : .clear)
+                    )
+                Image(systemName: "checkmark")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(AppTheme.textPrimary)
+                    .opacity(isCompleting ? 1 : 0)
+            }
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -302,6 +451,10 @@ private extension ContentView {
 
     func completeTask(_ task: TaskItem) {
         Task {
+            if let editingTask, editingTask.id == task.id {
+                let success = await commitEditing()
+                guard success else { return }
+            }
             do {
                 try await viewModel.complete(task: task)
                 try await viewModel.refresh(animate: true)
@@ -312,6 +465,90 @@ private extension ContentView {
                 assertionFailure("Failed to complete task: \(error)")
             }
         }
+    }
+
+    func beginEditing(_ task: TaskItem) {
+        if editingTask?.id == task.id {
+            return
+        }
+
+        Task {
+            if let current = editingTask, current.id != task.id {
+                let success = await commitEditing()
+                guard success else { return }
+            }
+
+            await MainActor.run {
+                editingTask = task
+                editingText = task.content
+                editingOriginalText = task.content
+                editingErrorMessage = nil
+                focusedTaskID = task.id
+            }
+        }
+    }
+
+    @discardableResult
+    func commitEditing() async -> Bool {
+        guard let task = editingTask else {
+            return true
+        }
+
+        let trimmed = editingText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            await MainActor.run {
+                editingErrorMessage = "请输入任务内容"
+                focusedTaskID = task.id
+            }
+            return false
+        }
+
+        let normalized = String(trimmed.prefix(TaskContentPolicy.maxLength))
+        if normalized == editingOriginalText {
+            await MainActor.run {
+                endEditing()
+            }
+            return true
+        }
+
+        do {
+            try await viewModel.edit(task: task, newContent: normalized)
+            await MainActor.run {
+                WidgetCenter.shared.reloadAllTimelines()
+            }
+            try await historyViewModel.loadHistory()
+            await MainActor.run {
+                endEditing()
+            }
+            return true
+        } catch TaskInputError.emptyContent {
+            await MainActor.run {
+                editingErrorMessage = "请输入任务内容"
+                focusedTaskID = task.id
+            }
+            return false
+        } catch TaskUpdateError.completedTask {
+            await MainActor.run {
+                editingErrorMessage = "已完成的任务无法编辑"
+                focusedTaskID = task.id
+            }
+            return false
+        } catch {
+            await MainActor.run {
+                editingErrorMessage = "保存失败，请重试"
+                focusedTaskID = task.id
+            }
+            return false
+        }
+    }
+
+    @MainActor
+    func endEditing() {
+        editingTask = nil
+        editingText = ""
+        editingOriginalText = ""
+        editingErrorMessage = nil
+        focusedTaskID = nil
     }
 
 #if DEBUG

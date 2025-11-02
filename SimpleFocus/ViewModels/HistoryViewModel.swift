@@ -29,29 +29,44 @@ final class HistoryViewModel: ObservableObject {
     }
 
     func loadHistory() async throws {
-        let completedTasks = try await store.fetchCompletedTasks()
-        guard !completedTasks.isEmpty else {
+        let tasks = try await store.fetchAllTasks()
+        guard !tasks.isEmpty else {
             sections = []
             return
         }
 
-        let grouped = Dictionary(grouping: completedTasks) { task in
+        let grouped = Dictionary(grouping: tasks) { task in
             calendar.startOfDay(for: task.creationDate)
         }
 
         let orderedDates = grouped.keys.sorted(by: >)
 
         sections = orderedDates.map { date in
-            let tasks = (grouped[date] ?? [])
+            let tasksForDate = (grouped[date] ?? [])
                 .sorted { $0.creationDate < $1.creationDate }
             let title = dateFormatter.string(from: date)
-            return HistorySection(id: date, date: date, title: title, tasks: tasks)
+            let completed = tasksForDate.filter(\.isCompleted)
+            let incomplete = tasksForDate.filter { !$0.isCompleted }
+            return HistorySection(id: date,
+                                  date: date,
+                                  title: title,
+                                  completedTasks: completed,
+                                  incompleteTasks: incomplete)
         }
     }
 
     func countDescription(for section: HistorySection) -> String {
-        let count = section.tasks.count
-        return "\(count) 条完成记录"
+        var components: [String] = []
+        if section.completedTasks.isEmpty == false {
+            components.append("已完成 · \(section.completedTasks.count) 条")
+        }
+        if section.incompleteTasks.isEmpty == false {
+            components.append("未完成 · \(section.incompleteTasks.count) 条")
+        }
+        if components.isEmpty {
+            return "暂无记录"
+        }
+        return components.joined(separator: "  |  ")
     }
 }
 
@@ -59,7 +74,8 @@ struct HistorySection: Identifiable, Equatable {
     let id: Date
     let date: Date
     let title: String
-    let tasks: [TaskItem]
+    let completedTasks: [TaskItem]
+    let incompleteTasks: [TaskItem]
 }
 
 private extension HistoryViewModel {

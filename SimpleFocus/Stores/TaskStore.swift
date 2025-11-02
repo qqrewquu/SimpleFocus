@@ -8,6 +8,10 @@
 import Foundation
 import SwiftData
 
+enum TaskUpdateError: Error, Equatable {
+    case completedTask
+}
+
 @MainActor
 final class TaskStore {
     private let modelContext: ModelContext
@@ -51,8 +55,19 @@ final class TaskStore {
 
         let descriptor = FetchDescriptor<TaskItem>(predicate: predicate)
         let tasks = try modelContext.fetch(descriptor)
+        guard !tasks.isEmpty else { return }
         tasks.forEach { modelContext.delete($0) }
         try modelContext.save()
+    }
+
+    func staleIncompleteTaskCount(before boundary: Date) throws -> Int {
+        let predicate = #Predicate<TaskItem> {
+            $0.creationDate < boundary &&
+            $0.isCompleted == false
+        }
+
+        let descriptor = FetchDescriptor<TaskItem>(predicate: predicate)
+        return try modelContext.fetchCount(descriptor)
     }
 
     func countTasksForToday(referenceDate: Date = Date()) throws -> Int {
@@ -98,6 +113,24 @@ final class TaskStore {
         descriptor.fetchLimit = 0
 
         return try modelContext.fetch(descriptor)
+    }
+
+    func fetchAllTasks() async throws -> [TaskItem] {
+        var descriptor = FetchDescriptor<TaskItem>(sortBy: [SortDescriptor(
+            \TaskItem.creationDate,
+            order: .reverse
+        )])
+        descriptor.fetchLimit = 0
+        return try modelContext.fetch(descriptor)
+    }
+
+    func updateTask(_ task: TaskItem, with content: String) throws {
+        guard task.isCompleted == false else {
+            throw TaskUpdateError.completedTask
+        }
+
+        task.content = content
+        try save(task: task)
     }
 
     func fetchCompletedTasks() async throws -> [TaskItem] {

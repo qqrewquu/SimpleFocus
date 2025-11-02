@@ -27,14 +27,20 @@ final class TaskListViewModel: ObservableObject {
     private let store: TaskStore
     private let celebrationProvider: CelebrationProviding
     private let encouragementProvider: EncouragementProviding
+    private let calendar: Calendar
     private var liveActivityController: LiveActivityLifecycleController?
+    private var currentDayAnchor: Date?
 
     init(store: TaskStore,
-         celebrationProvider: CelebrationProviding = CelebrationProvider(),
-         encouragementProvider: EncouragementProviding = EncouragementProvider()) {
+         celebrationProvider: CelebrationProviding? = nil,
+         encouragementProvider: EncouragementProviding? = nil,
+         calendar: Calendar = .current,
+         liveActivityController: LiveActivityLifecycleController? = nil) {
         self.store = store
-        self.celebrationProvider = celebrationProvider
-        self.encouragementProvider = encouragementProvider
+        self.celebrationProvider = celebrationProvider ?? CelebrationProvider()
+        self.encouragementProvider = encouragementProvider ?? EncouragementProvider()
+        self.calendar = calendar
+        self.liveActivityController = liveActivityController
     }
 
     func setLiveActivityController(_ controller: LiveActivityLifecycleController) {
@@ -42,6 +48,24 @@ final class TaskListViewModel: ObservableObject {
     }
 
     func refresh(referenceDate: Date = Date(), animate: Bool = false) async throws {
+        let dayAnchor = calendar.startOfDay(for: referenceDate)
+        let staleCount = try store.staleIncompleteTaskCount(before: dayAnchor)
+        let movedToNewDay = currentDayAnchor.map { dayAnchor > $0 } ?? false
+        let needsInitialRolloverHandling = (currentDayAnchor == nil && staleCount > 0)
+        let rolledOverFromPreviousDay = movedToNewDay || needsInitialRolloverHandling
+
+        if rolledOverFromPreviousDay {
+            recentlyCompletedTaskIDs.removeAll()
+            celebration = nil
+            limitState = nil
+
+            if let controller = liveActivityController, controller.isActivityRunning {
+                try await controller.endActivity(reason: .dateRolledOver)
+            }
+        }
+
+        currentDayAnchor = dayAnchor
+
         let previousCount = tasks.count
         let fetched = try await store.fetchIncompleteTasksForToday(referenceDate: referenceDate)
         if animate {
@@ -101,6 +125,12 @@ final class TaskListViewModel: ObservableObject {
         recentlyCompletedTaskIDs.insert(task.id)
     }
 
+    func edit(task: TaskItem, newContent: String, referenceDate: Date = Date()) async throws {
+        let normalized = try normalizeContent(from: newContent)
+        try store.updateTask(task, with: normalized)
+        try await refresh(referenceDate: referenceDate)
+    }
+
     func clearCompletionAnimation(for taskID: UUID) {
         recentlyCompletedTaskIDs.remove(taskID)
     }
@@ -114,6 +144,7 @@ final class TaskListViewModel: ObservableObject {
         recentlyCompletedTaskIDs.removeAll()
         celebration = nil
         limitState = nil
+        currentDayAnchor = calendar.startOfDay(for: referenceDate)
         try await refresh(referenceDate: referenceDate, animate: true)
     }
 
@@ -126,5 +157,13 @@ final class TaskListViewModel: ObservableObject {
         let limitReached = try store.isDailyLimitReached(referenceDate: referenceDate)
         canAddTask = !limitReached
         limitState = limitReached ? encouragementProvider.nextMessage() : nil
+    }
+
+    private func normalizeContent(from raw: String) throws -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            throw TaskInputError.emptyContent
+        }
+        return String(trimmed.prefix(TaskContentPolicy.maxLength))
     }
 }

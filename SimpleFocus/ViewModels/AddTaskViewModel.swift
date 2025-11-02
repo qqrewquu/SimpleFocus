@@ -15,7 +15,7 @@ enum TaskInputError: Error, Equatable {
 
 @MainActor
 final class AddTaskViewModel: ObservableObject {
-    static let maxLength = 20
+    static let maxLength = TaskContentPolicy.maxLength
 
     @Published var content: String = "" {
         didSet {

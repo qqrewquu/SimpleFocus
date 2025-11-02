@@ -14,6 +14,8 @@ enum AppTheme {
     static let textPrimary = Color.white
     static let textSecondary = Color.white.opacity(0.65)
     static let surfaceElevated = Color.white.opacity(0.08)
+    static let surfaceMuted = Color.white.opacity(0.04)
+    static let warning = Color(red: 1.0, green: 0.62, blue: 0.24)
     static let accentGradient = LinearGradient(
         gradient: Gradient(colors: [
             Color(red: 0.38, green: 0.72, blue: 1.0),
