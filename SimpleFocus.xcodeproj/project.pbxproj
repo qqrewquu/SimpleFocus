@@ -82,6 +82,13 @@
 			);
 			target = FD22C45E2EA2D3A900E88B83 /* SimpleFocus */;
 		};
+		FD3CE6AA2EB7F24F007AE186 /* Exceptions for "SimpleFocusWidget" folder in "SimpleFocusWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"WidgetExtension-Info.plist",
+			);
+			target = FD22C4B02EA40D9E00E88B83 /* SimpleFocusWidgetExtension */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -107,6 +114,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				FD22C5302EA41B0100E88B83 /* Exceptions for "SimpleFocusWidget" folder in "SimpleFocus" target */,
+				FD3CE6AA2EB7F24F007AE186 /* Exceptions for "SimpleFocusWidget" folder in "SimpleFocusWidgetExtension" target */,
 			);
 			path = SimpleFocusWidget;
 			sourceTree = "<group>";

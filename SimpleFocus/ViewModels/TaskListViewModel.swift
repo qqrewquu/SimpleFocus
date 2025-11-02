@@ -80,7 +80,9 @@ final class TaskListViewModel: ObservableObject {
             } catch is CancellationError {
                 return
             } catch {
-                await self.handleCompletionFailure(for: id, error: error)
+                await MainActor.run {
+                    self.handleCompletionFailure(for: id, error: error)
+                }
             }
         }
 
@@ -111,7 +113,9 @@ final class TaskListViewModel: ObservableObject {
                 handler()
             }
         } catch {
-            handleCompletionFailure(for: taskID, error: error)
+            await MainActor.run {
+                self.handleCompletionFailure(for: taskID, error: error)
+            }
         }
     }
 

@@ -60,8 +60,8 @@ struct LiveActivityLifecycleControllerTests {
         #expect(manager.endedActivities.isEmpty)
     }
 
-    @Test("End activity when all tasks complete")
-    func endActivityWhenAllTasksComplete() async throws {
+    @Test("Keep activity running and update when tasks become completed")
+    func keepActivityRunningWhenAllTasksComplete() async throws {
         let manager = LiveActivityManagerSpy()
         let builder = LiveActivityStateBuilder(calendar: calendar)
         let controller = LiveActivityLifecycleController(manager: manager,
@@ -79,22 +79,20 @@ struct LiveActivityLifecycleControllerTests {
                                                 tasks: [completedTask])
 
         #expect(manager.startedActivities.count == 1)
-        #expect(manager.updatedActivities.count == 0)
-        #expect(manager.endedActivities == [.completedAllTasks])
+        #expect(manager.updatedActivities.count == 1)
+        #expect(manager.endedActivities.isEmpty)
     }
 
-    @Test("Ignore updates when state builder returns nil")
-    func ignoreUpdatesWhenStateBuilderReturnsNil() async throws {
+    @Test("End activity when there are no tasks for today")
+    func endActivityWhenNoTasksForToday() async throws {
         let manager = LiveActivityManagerSpy()
         let builder = LiveActivityStateBuilder(calendar: calendar)
         let controller = LiveActivityLifecycleController(manager: manager,
                                                          stateBuilder: builder)
 
         let referenceDate = Date(timeIntervalSince1970: 5_000_000)
-        let completedTask = TaskItem(content: "Focus work", creationDate: referenceDate, isCompleted: true)
-
         try await controller.handleTasksChanged(referenceDate: referenceDate,
-                                                tasks: [completedTask])
+                                                tasks: [])
 
         #expect(manager.startedActivities.isEmpty)
         #expect(manager.updatedActivities.isEmpty)

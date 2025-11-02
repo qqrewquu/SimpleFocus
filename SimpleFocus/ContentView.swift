@@ -446,11 +446,11 @@ private extension ContentView {
                 let success = await commitEditing()
                 guard success else { return }
             }
-            viewModel.toggleCompletion(for: task) { [weak self] in
-                guard let self else { return }
+            let historyViewModel = historyViewModel
+            viewModel.toggleCompletion(for: task) {
                 Task {
                     WidgetCenter.shared.reloadAllTimelines()
-                    try? await self.historyViewModel.loadHistory()
+                    try? await historyViewModel.loadHistory()
                 }
             }
         }

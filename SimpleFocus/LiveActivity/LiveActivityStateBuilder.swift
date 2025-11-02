@@ -23,40 +23,40 @@ final class LiveActivityStateBuilder {
             return nil
         }
 
-        let incompleteTasks = todaysTasks
-            .filter { !$0.isCompleted }
-            .sorted { $0.creationDate < $1.creationDate }
-
-        let visibleIncomplete = Array(incompleteTasks.prefix(dailyLimit))
-        let visibleRemaining = visibleIncomplete.count
-
-        guard visibleRemaining > 0 else {
-            return nil
+        let sortedTasks = todaysTasks.sorted { lhs, rhs in
+            switch (lhs.isCompleted, rhs.isCompleted) {
+            case (true, false):
+                return true
+            case (false, true):
+                return false
+            default:
+                return lhs.creationDate < rhs.creationDate
+            }
         }
 
-        let completedCount = todaysTasks.filter(\.isCompleted).count
-        let totalCount = visibleRemaining + completedCount
-
-        let displayedTasks = visibleIncomplete.map {
+        let displayedTasks = Array(sortedTasks.prefix(dailyLimit)).map {
             LiveActivityDisplayTask(id: $0.id,
                                     content: $0.content,
-                                    isCompleted: false)
+                                    isCompleted: $0.isCompleted)
         }
 
+        let totalCount = todaysTasks.count
+        let completedCount = todaysTasks.filter(\.isCompleted).count
+        let remainingCount = totalCount - completedCount
+
         let progress = totalCount > 0 ? Double(completedCount) / Double(totalCount) : 0
-        let statusMessage = makeStatusMessage(remaining: visibleRemaining, total: totalCount)
+        let statusMessage = makeStatusMessage(completed: completedCount, total: totalCount)
 
         return LiveActivityContentState(displayedTasks: displayedTasks,
                                         totalTasks: totalCount,
                                         completedTasks: completedCount,
-                                        remainingTasks: visibleRemaining,
+                                        remainingTasks: remainingCount,
                                         progress: progress,
                                         statusMessage: statusMessage)
     }
 
-    private func makeStatusMessage(remaining: Int, total: Int) -> String {
-        let taskWord = remaining == 1 ? "Task" : "Tasks"
-        let suffix = remaining == 1 ? "Left" : "Left"
-        return "Daily Focus: \(remaining)/\(total) \(taskWord) \(suffix)"
+    private func makeStatusMessage(completed: Int, total: Int) -> String {
+        let taskWord = completed == 1 ? "Task" : "Tasks"
+        return "Daily Focus: \(completed)/\(total) \(taskWord) Completed"
     }
 }
