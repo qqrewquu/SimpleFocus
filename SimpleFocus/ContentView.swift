@@ -185,16 +185,10 @@ struct ContentView: View {
                                        focusBinding: $focusedTaskID,
                                        onComplete: { completeTask(task) },
                                        onSubmit: {
-                                           Task {
-                                               _ = await commitEditing()
-                                           }
+                                           Task { _ = await commitEditing() }
                                        },
                                        onFocusLost: {
-                                           if self.editingTask?.id == task.id {
-                                               Task {
-                                                   _ = await commitEditing()
-                                               }
-                                           }
+                                           handleFocusLost(for: task.id)
                                        })
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
@@ -463,26 +457,33 @@ private extension ContentView {
     }
 
     func beginEditing(_ task: TaskItem) {
+        Task { await activateEditing(for: task) }
+    }
+
+    func handleFocusLost(for taskID: UUID) {
+        Task { await commitEditingIfNeeded(for: taskID) }
+    }
+
+    @MainActor
+    private func activateEditing(for task: TaskItem) async {
         if editingTask?.id == task.id {
+            focusedTaskID = task.id
             return
         }
 
-        Task {
-            if let current = editingTask, current.id != task.id {
-                let success = await commitEditing()
-                guard success else { return }
-            }
-
-            await MainActor.run {
-                editingTask = task
-                editingText = task.content
-                editingOriginalText = task.content
-                editingErrorMessage = nil
-                focusedTaskID = task.id
-            }
+        if let current = editingTask, current.id != task.id {
+            let success = await commitEditing()
+            guard success else { return }
         }
+
+        editingTask = task
+        editingText = task.content
+        editingOriginalText = task.content
+        editingErrorMessage = nil
+        focusedTaskID = task.id
     }
 
+    @MainActor
     @discardableResult
     func commitEditing() async -> Bool {
         guard let task = editingTask else {
@@ -491,50 +492,42 @@ private extension ContentView {
 
         let trimmed = editingText.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
-            await MainActor.run {
-                editingErrorMessage = "请输入任务内容"
-                focusedTaskID = task.id
-            }
+            editingErrorMessage = "请输入任务内容"
+            focusedTaskID = task.id
             return false
         }
 
         let normalized = String(trimmed.prefix(TaskContentPolicy.maxLength))
         if normalized == editingOriginalText {
-            await MainActor.run {
-                endEditing()
-            }
+            endEditing()
             return true
         }
 
         do {
             try await viewModel.edit(task: task, newContent: normalized)
-            await MainActor.run {
-                WidgetCenter.shared.reloadAllTimelines()
-            }
+            WidgetCenter.shared.reloadAllTimelines()
             try await historyViewModel.loadHistory()
-            await MainActor.run {
-                endEditing()
-            }
+            endEditing()
             return true
         } catch TaskInputError.emptyContent {
-            await MainActor.run {
-                editingErrorMessage = "请输入任务内容"
-                focusedTaskID = task.id
-            }
+            editingErrorMessage = "请输入任务内容"
+            focusedTaskID = task.id
             return false
         } catch TaskUpdateError.completedTask {
-            await MainActor.run {
-                editingErrorMessage = "已完成的任务无法编辑"
-                focusedTaskID = task.id
-            }
+            editingErrorMessage = "已完成的任务无法编辑"
+            focusedTaskID = task.id
             return false
         } catch {
-            await MainActor.run {
-                editingErrorMessage = "保存失败，请重试"
-                focusedTaskID = task.id
-            }
+            editingErrorMessage = "保存失败，请重试"
+            focusedTaskID = task.id
             return false
         }
+    }
+
+    @MainActor
+    private func commitEditingIfNeeded(for taskID: UUID) async {
+        guard editingTask?.id == taskID else { return }
+        _ = await commitEditing()
     }
 
     @MainActor
