@@ -466,7 +466,7 @@ private extension ContentView {
 
     @MainActor
     private func activateEditing(for task: TaskItem) async {
-        print("[InlineEdit] activateEditing start for task=\(task.id), current=\(editingTask?.id?.uuidString ?? "nil")")
+        print("[InlineEdit] activateEditing start for task=\(task.id), current=\(editingTask?.id.uuidString ?? "nil")")
         if editingTask?.id == task.id {
             print("[InlineEdit] already editing same task, refocusing")
             focusedTaskID = task.id
@@ -490,7 +490,7 @@ private extension ContentView {
     @MainActor
     @discardableResult
     func commitEditing() async -> Bool {
-        print("[InlineEdit] commit requested, current task=\(editingTask?.id?.uuidString ?? "nil") text=\(editingText)")
+        print("[InlineEdit] commit requested, current task=\(editingTask?.id.uuidString ?? "nil") text=\(editingText)")
         guard let task = editingTask else {
             return true
         }
@@ -537,7 +537,7 @@ private extension ContentView {
 
     @MainActor
     private func commitEditingIfNeeded(for taskID: UUID) async {
-        print("[InlineEdit] focus lost callback for task=\(taskID), current editing=\(editingTask?.id?.uuidString ?? "nil")")
+        print("[InlineEdit] focus lost callback for task=\(taskID), current editing=\(editingTask?.id.uuidString ?? "nil")")
         guard editingTask?.id == taskID else { return }
         _ = await commitEditing()
     }
