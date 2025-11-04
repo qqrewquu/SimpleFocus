@@ -9,6 +9,7 @@ struct ContentView: View {
     @StateObject private var historyNavigation = HistoryNavigationState()
 
     @State private var isPresentingAddTask = false
+    @AppStorage("pendingOnboardingTask") private var pendingOnboardingTask: String = ""
 
     @State private var editingTask: TaskItem?
     @State private var editingText: String = ""
@@ -19,6 +20,7 @@ struct ContentView: View {
 
 #if DEBUG
     @State private var isShowingResetAlert = false
+    @State private var isShowingOnboardingResetAlert = false
 #endif
 
     @MainActor
@@ -50,6 +52,17 @@ struct ContentView: View {
         .background(AppTheme.background.ignoresSafeArea())
         .task {
             try? await viewModel.refresh()
+            await MainActor.run {
+                handlePendingOnboardingPrefill()
+            }
+        }
+        .onChange(of: pendingOnboardingTask) { _, _ in
+            handlePendingOnboardingPrefill()
+        }
+        .onChange(of: isPresentingAddTask) { _, newValue in
+            if !newValue {
+                pendingOnboardingTask = ""
+            }
         }
 #if DEBUG
         .alert("清空今天的任务？", isPresented: $isShowingResetAlert) {
@@ -59,6 +72,14 @@ struct ContentView: View {
             }
         } message: {
             Text("该操作仅用于调试，将删除今天的所有任务。")
+        }
+        .alert("重置 Onboarding 流程？", isPresented: $isShowingOnboardingResetAlert) {
+            Button("取消", role: .cancel) {}
+            Button("重置", role: .destructive) {
+                resetOnboardingForDebug()
+            }
+        } message: {
+            Text("此操作会清除引导完成状态。重启应用后将重新进入 Onboarding。")
         }
 #endif
         .sheet(isPresented: $isPresentingAddTask) {
@@ -128,6 +149,12 @@ struct ContentView: View {
                 isShowingResetAlert = true
             } label: {
                 Label("清空今天的任务", systemImage: "trash")
+            }
+
+            Button {
+                isShowingOnboardingResetAlert = true
+            } label: {
+                Label("重置 Onboarding", systemImage: "arrow.counterclockwise")
             }
         } label: {
             Image(systemName: "ellipsis.circle")
@@ -206,7 +233,7 @@ struct ContentView: View {
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .background(Color.clear)
-            .onChange(of: editingText) { newValue in
+            .onChange(of: editingText) { _, newValue in
                 if editingTask != nil && !newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     editingErrorMessage = nil
                 }
@@ -341,7 +368,7 @@ private struct EditingTaskRow: View {
                             onFocusLost()
                         }
                     }
-                    .onChange(of: text) { newValue in
+                    .onChange(of: text) { _, newValue in
                         if newValue.count > TaskContentPolicy.maxLength {
                             text = String(newValue.prefix(TaskContentPolicy.maxLength))
                         }
@@ -414,6 +441,7 @@ private struct LimitReachedView: View {
     }
 }
 
+
 private extension ContentView {
     var historySheetBinding: Binding<Bool> {
         Binding(
@@ -438,6 +466,21 @@ private extension ContentView {
                 assertionFailure("Failed to refresh after adding task: \(error)")
             }
         }
+    }
+
+    func handlePendingOnboardingPrefill(force: Bool = false) {
+        let trimmed = pendingOnboardingTask.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        if !viewModel.canAddTask {
+            pendingOnboardingTask = ""
+            return
+        }
+
+        guard force || !isPresentingAddTask else { return }
+
+        addTaskViewModel.content = String(trimmed.prefix(AddTaskViewModel.maxLength))
+        isPresentingAddTask = true
     }
 
     func completeTask(_ task: TaskItem) {
@@ -570,6 +613,11 @@ private extension ContentView {
                 assertionFailure("Failed to clear today's tasks: \(error)")
             }
         }
+    }
+
+    func resetOnboardingForDebug() {
+        pendingOnboardingTask = ""
+        UserDefaults.standard.removeObject(forKey: "hasCompletedOnboarding")
     }
 #endif
 }

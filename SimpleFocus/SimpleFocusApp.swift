@@ -6,6 +6,8 @@ struct SimpleFocusApp: App {
     private let container: ModelContainer
     private let store: TaskStore
     private let liveActivityController: LiveActivityLifecycleController?
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
+    @AppStorage("pendingOnboardingTask") private var pendingOnboardingTask: String = ""
 
     init() {
         do {
@@ -55,8 +57,24 @@ struct SimpleFocusApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView(store: store, liveActivityController: liveActivityController)
+            if hasCompletedOnboarding {
+                ContentView(store: store, liveActivityController: liveActivityController)
+                    .modelContainer(container)
+            } else {
+                OnboardingView(
+                    viewModel: OnboardingViewModel(
+                        onFinish: { goal in
+                            pendingOnboardingTask = goal
+                            hasCompletedOnboarding = true
+                        },
+                        onSkip: {
+                            pendingOnboardingTask = ""
+                            hasCompletedOnboarding = true
+                        }
+                    )
+                )
                 .modelContainer(container)
+            }
         }
     }
 }

@@ -65,7 +65,11 @@ final class SimpleFocusLiveActivityManager: LiveActivityManaging {
         case .completedAllTasks, .manualReset, .dateRolledOver:
             dismissal = .immediate
         }
-        await activity.end(dismissalPolicy: dismissal)
+        if #available(iOS 16.2, *) {
+            await activity.end(content: nil, dismissalPolicy: dismissal)
+        } else {
+            await activity.end(dismissalPolicy: dismissal)
+        }
         self.activity = nil
     }
 }
