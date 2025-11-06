@@ -16,7 +16,7 @@ final class HistoryViewModel: ObservableObject {
         sections.isEmpty
     }
 
-    private let store: TaskStore
+    let store: TaskStore
     private let calendar: Calendar
     private let dateFormatter: DateFormatter
 

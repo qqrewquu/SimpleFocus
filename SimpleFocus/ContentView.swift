@@ -7,8 +7,10 @@ struct ContentView: View {
     @StateObject private var addTaskViewModel: AddTaskViewModel
     @StateObject private var historyViewModel: HistoryViewModel
     @StateObject private var historyNavigation = HistoryNavigationState()
+    @StateObject private var settingsViewModel: SettingsViewModel
 
     @State private var isPresentingAddTask = false
+    @State private var isPresentingSettings = false
     @AppStorage("pendingOnboardingTask") private var pendingOnboardingTask: String = ""
 
     @State private var editingTask: TaskItem?
@@ -32,6 +34,7 @@ struct ContentView: View {
         _viewModel = StateObject(wrappedValue: taskListViewModel)
         _addTaskViewModel = StateObject(wrappedValue: AddTaskViewModel(store: store))
         _historyViewModel = StateObject(wrappedValue: HistoryViewModel(store: store))
+        _settingsViewModel = StateObject(wrappedValue: SettingsViewModel(scheduler: ReminderNotificationScheduler()))
     }
 
     var body: some View {
@@ -98,6 +101,12 @@ struct ContentView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(AppTheme.background)
         }
+        .sheet(isPresented: $isPresentingSettings) {
+            SettingsView(viewModel: settingsViewModel)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(AppTheme.background)
+        }
         .sheet(item: Binding(
             get: { viewModel.celebration },
             set: { value in
@@ -133,6 +142,7 @@ struct ContentView: View {
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(AppTheme.primary)
                 }
+                settingsButton
 #if DEBUG
                 debugMenu
 #endif
@@ -165,6 +175,19 @@ struct ContentView: View {
         .contentShape(Rectangle())
     }
 #endif
+
+    private var settingsButton: some View {
+        Button {
+            isPresentingSettings = true
+        } label: {
+            Image(systemName: "gearshape.fill")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundColor(AppTheme.textSecondary)
+                .padding(8)
+        }
+        .contentShape(Rectangle())
+        .accessibilityLabel("打开设置")
+    }
 
     private var historyButton: some View {
         Button {

@@ -29,6 +29,16 @@ struct HistoryView: View {
                         }
                         .foregroundColor(AppTheme.textPrimary)
                     }
+                    ToolbarItem(placement: .primaryAction) {
+                        NavigationLink {
+                            FocusCalendarView(viewModel: FocusCalendarViewModel(store: viewModel.store))
+                        } label: {
+                            Image(systemName: "calendar")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(AppTheme.textSecondary)
+                        }
+                        .accessibilityLabel("查看专注日历")
+                    }
                 }
         }
         .background(AppTheme.background.ignoresSafeArea())
