@@ -12,6 +12,7 @@ struct CommitmentStepView: View {
     @Binding var signature: String
 
     @FocusState private var focusedField: Field?
+    @Environment(\.themePalette) private var theme
 
     enum Field {
         case goal
@@ -24,11 +25,11 @@ struct CommitmentStepView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("写下今天最重要的一件事")
                         .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(AppTheme.textPrimary)
+                        .foregroundColor(theme.textPrimary)
 
                     Text("一旦写下，就意味着向自己做出承诺。完成它，你就离目标更近一步。")
                         .font(.system(size: 17))
-                        .foregroundColor(AppTheme.textSecondary)
+                        .foregroundColor(theme.textSecondary)
                         .lineSpacing(4)
                 }
                 .padding(.horizontal, 4)
@@ -36,7 +37,7 @@ struct CommitmentStepView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("我的第一个专注目标是")
                         .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(AppTheme.textSecondary)
+                        .foregroundColor(theme.textSecondary)
 
                     TextField("例如：完成年度汇报初稿", text: $firstGoal)
                         .textFieldStyle(OnboardingTextFieldStyle())
@@ -50,7 +51,7 @@ struct CommitmentStepView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("签名确认")
                         .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(AppTheme.textSecondary)
+                        .foregroundColor(theme.textSecondary)
 
                     TextField("请输入你的名字或昵称", text: $signature)
                         .textFieldStyle(OnboardingTextFieldStyle())
@@ -61,17 +62,17 @@ struct CommitmentStepView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Label("小贴士", systemImage: "lightbulb")
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(AppTheme.primary)
+                        .foregroundColor(theme.primary)
 
                     Text("将目标写得具体且可完成，例如：“周三前完成市场调研 PPT 的前三页”，这样在完成时更有成就感。")
                         .font(.system(size: 15))
-                        .foregroundColor(AppTheme.textSecondary)
+                        .foregroundColor(theme.textSecondary)
                         .lineSpacing(4)
                 }
                 .padding()
                 .background(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(AppTheme.surfaceMuted)
+                        .fill(theme.surfaceMuted)
                 )
             }
             .padding(.horizontal, 24)
@@ -82,14 +83,15 @@ struct CommitmentStepView: View {
 }
 
 private struct OnboardingTextFieldStyle: TextFieldStyle {
+    @Environment(\.themePalette) private var theme
     func _body(configuration: TextField<_Label>) -> some View {
         configuration
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(AppTheme.surfaceElevated)
+                    .fill(theme.surfaceElevated)
             )
-            .foregroundColor(AppTheme.textPrimary)
+            .foregroundColor(theme.textPrimary)
     }
 }

@@ -8,6 +8,7 @@ struct ContentView: View {
     @ObservedObject private var focusCalendarViewModel: FocusCalendarViewModel
     @ObservedObject private var bonsaiController: BonsaiController
     private let store: TaskStore
+    @Environment(\.themePalette) private var theme
 
     @State private var isPresentingAddTask = false
     @AppStorage("hasNewBonsaiGrowth") private var hasNewBonsaiGrowth: Bool = false
@@ -57,7 +58,7 @@ struct ContentView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(AppTheme.background.ignoresSafeArea())
+        .background(theme.background.ignoresSafeArea())
         .task {
             try? await viewModel.refresh()
             await MainActor.run {
@@ -98,7 +99,7 @@ struct ContentView: View {
             }
             .presentationDetents([.fraction(0.38), .medium])
             .presentationDragIndicator(.visible)
-            .presentationBackground(AppTheme.background)
+            .presentationBackground(theme.background)
         }
         .sheet(item: Binding(
             get: { viewModel.celebration },
@@ -113,7 +114,7 @@ struct ContentView: View {
             }
             .presentationDetents([.fraction(0.38)])
             .presentationDragIndicator(.visible)
-            .presentationBackground(AppTheme.background)
+            .presentationBackground(theme.background)
         }
     }
 
@@ -121,7 +122,7 @@ struct ContentView: View {
         ZStack {
             Text("SimpleFocus")
                 .font(.system(size: 32, weight: .bold))
-                .foregroundColor(AppTheme.textPrimary)
+                .foregroundColor(theme.textPrimary)
 
             HStack {
                 Spacer()
@@ -132,7 +133,7 @@ struct ContentView: View {
                         }
                     }
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(AppTheme.primary)
+                    .foregroundColor(theme.primary)
                 }
 #if DEBUG
                 debugMenu
@@ -160,7 +161,7 @@ struct ContentView: View {
         } label: {
             Image(systemName: "ellipsis.circle")
                 .font(.system(size: 22, weight: .semibold))
-                .foregroundColor(AppTheme.textSecondary)
+                .foregroundColor(theme.textSecondary)
                 .padding(8)
         }
         .contentShape(Rectangle())
@@ -213,7 +214,7 @@ struct ContentView: View {
             Spacer()
             Text("请添加你的第一个专注任务")
                 .font(.system(size: 18, weight: .medium))
-                .foregroundColor(AppTheme.textSecondary)
+                .foregroundColor(theme.textSecondary)
             Spacer()
         }
     }
@@ -236,8 +237,8 @@ struct ContentView: View {
             Image(systemName: "plus")
                 .font(.system(size: 28, weight: .bold))
                 .frame(width: 64, height: 64)
-                .foregroundColor(AppTheme.textPrimary)
-                .background(AppTheme.primary)
+                .foregroundColor(theme.textPrimary)
+                .background(theme.primary)
                 .clipShape(Circle())
                 .shadow(color: .black.opacity(0.4), radius: 16, x: 0, y: 8)
         }
@@ -273,6 +274,7 @@ private struct DisplayTaskRow: View {
     let isPending: Bool
     let onComplete: () -> Void
     let onEdit: () -> Void
+    @Environment(\.themePalette) private var theme
 
     var body: some View {
         HStack(spacing: 16) {
@@ -280,7 +282,7 @@ private struct DisplayTaskRow: View {
 
             Text(task.content)
                 .font(.system(size: 18))
-                .foregroundColor(AppTheme.textPrimary)
+                .foregroundColor(theme.textPrimary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
                 .onTapGesture(perform: onEdit)
@@ -297,15 +299,15 @@ private struct DisplayTaskRow: View {
         Button(action: onComplete) {
             ZStack {
                 Circle()
-                    .stroke(AppTheme.textPrimary.opacity(0.9), lineWidth: 2)
+                    .stroke(theme.textPrimary.opacity(0.9), lineWidth: 2)
                     .frame(width: 28, height: 28)
                     .background(
                         Circle()
-                            .fill(isPending ? AppTheme.primary : .clear)
+                            .fill(isPending ? theme.primary : .clear)
                     )
                 Image(systemName: "checkmark")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(AppTheme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
                     .opacity(isPending ? 1 : 0)
             }
         }
@@ -322,6 +324,7 @@ private struct EditingTaskRow: View {
     let onComplete: () -> Void
     let onSubmit: () -> Void
     let onFocusLost: () -> Void
+    @Environment(\.themePalette) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -330,7 +333,7 @@ private struct EditingTaskRow: View {
 
                 TextField("编辑任务", text: $text)
                     .font(.system(size: 18))
-                    .foregroundColor(AppTheme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
                     .submitLabel(.done)
                     .focused(focusBinding, equals: task.id)
                     .onSubmit(onSubmit)
@@ -366,15 +369,15 @@ private struct EditingTaskRow: View {
         Button(action: onComplete) {
             ZStack {
                 Circle()
-                    .stroke(AppTheme.textPrimary.opacity(0.9), lineWidth: 2)
+                    .stroke(theme.textPrimary.opacity(0.9), lineWidth: 2)
                     .frame(width: 28, height: 28)
                     .background(
                         Circle()
-                            .fill(isPending ? AppTheme.primary : .clear)
+                            .fill(isPending ? theme.primary : .clear)
                     )
                 Image(systemName: "checkmark")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(AppTheme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
                     .opacity(isPending ? 1 : 0)
             }
         }
@@ -384,27 +387,28 @@ private struct EditingTaskRow: View {
 
 private struct LimitReachedView: View {
     let limitState: EncouragementMessage
+    @Environment(\.themePalette) private var theme
 
     var body: some View {
         VStack(spacing: 24) {
             ZStack {
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(AppTheme.surfaceElevated)
+                    .fill(theme.surfaceElevated)
                     .frame(width: 96, height: 96)
                 Image(systemName: "sparkles")
                     .font(.system(size: 36, weight: .semibold))
-                    .foregroundStyle(AppTheme.accentGradient)
+                    .foregroundStyle(theme.accentGradient)
             }
             .padding(.bottom, 4)
 
             Text(limitState.message)
                 .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(AppTheme.accentGradient)
+                .foregroundStyle(theme.accentGradient)
                 .multilineTextAlignment(.center)
 
             Text(limitState.encouragement)
                 .font(.system(size: 17))
-                .foregroundColor(AppTheme.textSecondary)
+                .foregroundColor(theme.textSecondary)
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)
         }

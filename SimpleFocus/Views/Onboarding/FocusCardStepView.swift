@@ -12,6 +12,7 @@ struct FocusCardStepView: View {
     let signature: String
     let subtitle: String
     let quote: (quote: String, author: String)
+    @Environment(\.themePalette) private var theme
 
     var body: some View {
         VStack(spacing: 28) {
@@ -19,13 +20,13 @@ struct FocusCardStepView: View {
 
             Text("太棒了！你的专注旅程即将开始")
                 .font(.system(size: 28, weight: .bold))
-                .foregroundColor(AppTheme.textPrimary)
+                .foregroundColor(theme.textPrimary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 16)
 
             Text("这是你为自己做出的承诺卡片。今天就从这个目标开始，完成后别忘了回来打卡。")
                 .font(.system(size: 17))
-                .foregroundColor(AppTheme.textSecondary)
+                .foregroundColor(theme.textSecondary)
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)
                 .padding(.horizontal, 24)
@@ -46,45 +47,46 @@ private struct FocusCard: View {
     let goalTitle: String
     let signature: String
     let subtitle: String
+    @Environment(\.themePalette) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack(alignment: .center, spacing: 16) {
                 Image(systemName: "checkmark.seal.fill")
                     .font(.system(size: 32, weight: .bold))
-                    .foregroundStyle(AppTheme.accentGradient)
+                    .foregroundStyle(theme.accentGradient)
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text("今日专注目标")
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(AppTheme.textSecondary)
+                        .foregroundColor(theme.textSecondary)
 
                     Text(subtitle)
                         .font(.system(size: 15))
-                        .foregroundColor(AppTheme.textSecondary.opacity(0.8))
+                        .foregroundColor(theme.textSecondary.opacity(0.8))
                 }
             }
 
             Text(goalTitle.isEmpty ? "为自己的目标写下一个清晰描述" : goalTitle)
                 .font(.system(size: 24, weight: .bold))
-                .foregroundColor(AppTheme.textPrimary)
+                .foregroundColor(theme.textPrimary)
                 .lineSpacing(4)
 
             HStack {
                 Spacer()
                 Text(signature.isEmpty ? "署名等待填写" : "—— \(signature)")
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(AppTheme.textSecondary)
+                    .foregroundColor(theme.textSecondary)
             }
         }
         .padding(28)
         .background(
             RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(AppTheme.surfaceElevated)
+                .fill(theme.surfaceElevated)
                 .shadow(color: Color.black.opacity(0.35), radius: 18, x: 0, y: 16)
         )
         .overlay(
-            AppTheme.accentGradient
+            theme.accentGradient
                 .opacity(0.25)
                 .mask(
                     RoundedRectangle(cornerRadius: 26, style: .continuous)
@@ -92,7 +94,7 @@ private struct FocusCard: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .stroke(AppTheme.primary.opacity(0.4), lineWidth: 1.2)
+                .stroke(theme.primary.opacity(0.4), lineWidth: 1.2)
         )
     }
 }
@@ -100,23 +102,24 @@ private struct FocusCard: View {
 private struct QuoteBlock: View {
     let quote: String
     let author: String
+    @Environment(\.themePalette) private var theme
 
     var body: some View {
         VStack(spacing: 8) {
             Text(quote)
                 .font(.system(size: 15, weight: .medium))
-                .foregroundColor(AppTheme.textSecondary)
+                .foregroundColor(theme.textSecondary)
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)
             Text(author)
                 .font(.system(size: 13))
-                .foregroundColor(AppTheme.textSecondary.opacity(0.7))
+                .foregroundColor(theme.textSecondary.opacity(0.7))
         }
         .padding(.vertical, 18)
         .padding(.horizontal, 20)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(AppTheme.surfaceMuted)
+                .fill(theme.surfaceMuted)
         )
     }
 }

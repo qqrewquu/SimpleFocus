@@ -10,6 +10,7 @@ import SwiftUI
 struct FocusCalendarView: View {
     @StateObject private var viewModel: FocusCalendarViewModel
     @State private var selectedDate: Date?
+    @Environment(\.themePalette) private var theme
 
     init(viewModel: FocusCalendarViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
@@ -26,7 +27,7 @@ struct FocusCalendarView: View {
             .padding(.top, 24)
             .padding(.bottom, 32)
         }
-        .background(AppTheme.background.ignoresSafeArea())
+        .background(theme.background.ignoresSafeArea())
         .navigationTitle("专注日历")
         .navigationBarTitleDisplayMode(.inline)
         .task {
@@ -47,7 +48,7 @@ struct FocusCalendarView: View {
                           titleText: viewModel.displayString(for: selection.date))
                 .presentationDetents([.fraction(0.45), .medium, .large])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(AppTheme.background)
+                .presentationBackground(theme.background)
         }
     }
 
@@ -58,7 +59,7 @@ struct FocusCalendarView: View {
             } label: {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(AppTheme.textSecondary)
+                    .foregroundColor(theme.textSecondary)
                     .padding(8)
             }
             .buttonStyle(.plain)
@@ -67,7 +68,7 @@ struct FocusCalendarView: View {
 
             Text(viewModel.monthTitle())
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(AppTheme.textPrimary)
+                .foregroundColor(theme.textPrimary)
 
             Spacer()
 
@@ -76,7 +77,7 @@ struct FocusCalendarView: View {
             } label: {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(AppTheme.textSecondary)
+                    .foregroundColor(theme.textSecondary)
                     .padding(8)
             }
             .buttonStyle(.plain)
@@ -89,7 +90,7 @@ struct FocusCalendarView: View {
             ForEach(symbols, id: \.self) { symbol in
                 Text(symbol)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(AppTheme.textSecondary)
+                    .foregroundColor(theme.textSecondary)
                     .frame(maxWidth: .infinity)
             }
         }

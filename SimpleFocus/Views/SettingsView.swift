@@ -13,6 +13,8 @@ struct SettingsView: View {
     var showsDoneButton: Bool = true
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
+    @Environment(\.themePalette) private var theme
+    @EnvironmentObject private var themeManager: ThemeManager
 
     private let appStoreURL = URL(string: "https://apps.apple.com/app/id0000000000?action=write-review")
     private let feedbackMailURL = URL(string: "mailto:support@simplefocus.app?subject=SimpleFocus%20反馈")
@@ -21,12 +23,13 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 notificationSection
+                appearanceSection
                 aboutSection
                 versionSection
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
-            .background(AppTheme.background.ignoresSafeArea())
+            .background(theme.background.ignoresSafeArea())
             .navigationTitle("设置")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -35,12 +38,11 @@ struct SettingsView: View {
                         Button("完成") {
                             dismiss()
                         }
-                        .foregroundColor(AppTheme.primary)
+                        .foregroundColor(theme.primary)
                     }
                 }
             }
         }
-        .preferredColorScheme(.dark)
         .alert(item: $viewModel.alertContext) { context in
             Alert(
                 title: Text(context.title),
@@ -77,15 +79,28 @@ struct SettingsView: View {
 
                 Text(viewModel.reminderSummaryText)
                     .font(.footnote)
-                    .foregroundColor(AppTheme.textSecondary)
+                    .foregroundColor(theme.textSecondary)
             } else {
                 Text("提醒未开启")
                     .font(.footnote)
-                    .foregroundColor(AppTheme.textSecondary)
+                    .foregroundColor(theme.textSecondary)
             }
         }
-        .listRowBackground(AppTheme.surfaceElevated)
-        .tint(AppTheme.primary)
+        .listRowBackground(theme.surfaceElevated)
+        .tint(theme.primary)
+    }
+
+    private var appearanceSection: some View {
+        Section(header: Text("外观").font(.subheadline)) {
+            Picker("主题", selection: Binding(get: { themeManager.mode },
+                                              set: { themeManager.mode = $0 })) {
+                ForEach(AppThemeMode.allCases) { mode in
+                    Text(mode.displayName).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+        .listRowBackground(theme.surfaceElevated)
     }
 
     private var aboutSection: some View {
@@ -106,7 +121,7 @@ struct SettingsView: View {
                 Label("反馈与建议", systemImage: "envelope.fill")
             }
         }
-        .listRowBackground(AppTheme.surfaceElevated)
+        .listRowBackground(theme.surfaceElevated)
     }
 
     private var versionSection: some View {
@@ -115,11 +130,11 @@ struct SettingsView: View {
                 Spacer()
                 Text(viewModel.versionDisplayText)
                     .font(.caption2)
-                    .foregroundColor(AppTheme.textSecondary)
+                    .foregroundColor(theme.textSecondary)
                 Spacer()
             }
             .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
         }
-        .listRowBackground(AppTheme.surfaceElevated)
+        .listRowBackground(theme.surfaceElevated)
     }
 }

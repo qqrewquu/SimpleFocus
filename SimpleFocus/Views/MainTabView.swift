@@ -7,6 +7,7 @@
 
 import SwiftData
 import SwiftUI
+import UIKit
 
 struct MainTabView: View {
     private enum Tab {
@@ -25,6 +26,8 @@ struct MainTabView: View {
     @StateObject private var focusCalendarViewModel: FocusCalendarViewModel
     @StateObject private var settingsViewModel: SettingsViewModel
     @StateObject private var bonsaiController: BonsaiController
+    @Environment(\.themePalette) private var theme
+    @EnvironmentObject private var themeManager: ThemeManager
 
     init(store: TaskStore,
          container: ModelContainer,
@@ -70,12 +73,38 @@ struct MainTabView: View {
                 }
                 .tag(Tab.settings)
         }
-        .background(AppTheme.background.ignoresSafeArea())
+        .tint(theme.tabActive)
+        .background(theme.background.ignoresSafeArea())
         .modelContainer(container)
+        .onAppear {
+            applyTabAppearance(for: theme)
+        }
+        .onChange(of: themeManager.mode) { _ in
+            applyTabAppearance(for: themeManager.palette)
+        }
         .onChange(of: selectedTab) { _, newValue in
             if newValue == .bonsai {
                 hasNewBonsaiGrowth = false
             }
         }
+    }
+
+    private func applyTabAppearance(for palette: AppThemePalette) {
+        let appearance = UITabBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = UIColor(palette.background)
+
+        let itemAppearance = UITabBarItemAppearance()
+        itemAppearance.normal.iconColor = UIColor(palette.tabInactive)
+        itemAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor(palette.tabInactive)]
+        itemAppearance.selected.iconColor = UIColor(palette.tabActive)
+        itemAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor(palette.tabActive)]
+
+        appearance.stackedLayoutAppearance = itemAppearance
+        appearance.inlineLayoutAppearance = itemAppearance
+        appearance.compactInlineLayoutAppearance = itemAppearance
+
+        UITabBar.appearance().standardAppearance = appearance
+        UITabBar.appearance().scrollEdgeAppearance = appearance
     }
 }

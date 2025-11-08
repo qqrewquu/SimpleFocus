@@ -10,6 +10,7 @@ import SwiftUI
 struct OnboardingView: View {
     @StateObject private var viewModel: OnboardingViewModel
     @State private var isShowingSkipAlert = false
+    @Environment(\.themePalette) private var theme
 
     init(viewModel: OnboardingViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
@@ -17,7 +18,7 @@ struct OnboardingView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.background
+            theme.background
                 .ignoresSafeArea()
 
             VStack(spacing: 28) {
@@ -52,7 +53,7 @@ struct OnboardingView: View {
 
                 ProgressView(value: viewModel.progressFraction)
                     .progressViewStyle(.linear)
-                    .tint(AppTheme.primary)
+                    .tint(theme.primary)
                     .padding(.horizontal, 32)
 
                 HStack {
@@ -61,7 +62,7 @@ struct OnboardingView: View {
                             viewModel.goBack()
                         }
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(AppTheme.textSecondary)
+                        .foregroundColor(theme.textSecondary)
                     }
 
                     Spacer()
@@ -80,7 +81,7 @@ struct OnboardingView: View {
                         isShowingSkipAlert = true
                     }
                     .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(AppTheme.textSecondary)
+                    .foregroundColor(theme.textSecondary)
                     .padding(.trailing, 32)
                     .alert("确认跳过引导？", isPresented: $isShowingSkipAlert) {
                         Button("随时在右下角新增", role: .cancel) {
@@ -106,12 +107,13 @@ private struct PrimaryOnboardingButtonStyle: ButtonStyle {
 
     private struct PrimaryButton: View {
         @Environment(\.isEnabled) private var isEnabled
+        @Environment(\.themePalette) private var theme
         let configuration: Configuration
 
         var body: some View {
             configuration.label
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(isEnabled ? AppTheme.textPrimary : AppTheme.textPrimary.opacity(0.55))
+                .foregroundColor(isEnabled ? theme.textPrimary : theme.textPrimary.opacity(0.55))
                 .frame(maxWidth: .infinity)
                 .padding()
                 .background(
@@ -124,9 +126,9 @@ private struct PrimaryOnboardingButtonStyle: ButtonStyle {
 
         private var backgroundColor: Color {
             if !isEnabled {
-                return AppTheme.primaryDisabled
+                return theme.primaryDisabled
             }
-            return AppTheme.primary.opacity(configuration.isPressed ? 0.7 : 1)
+            return theme.primary.opacity(configuration.isPressed ? 0.7 : 1)
         }
     }
 }

@@ -13,6 +13,7 @@ struct HistoryView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var calendarViewModel: FocusCalendarViewModel
     var showsDismissButton: Bool = true
+    @Environment(\.themePalette) private var theme
 
     init(calendarViewModel: FocusCalendarViewModel, showsDismissButton: Bool = true) {
         _calendarViewModel = StateObject(wrappedValue: calendarViewModel)
@@ -30,12 +31,12 @@ struct HistoryView: View {
                             Button("完成") {
                                 dismiss()
                             }
-                            .foregroundColor(AppTheme.textPrimary)
+                            .foregroundColor(theme.textPrimary)
                         }
                     }
                 }
         }
-        .background(AppTheme.background.ignoresSafeArea())
+        .background(theme.background.ignoresSafeArea())
     }
 }
 

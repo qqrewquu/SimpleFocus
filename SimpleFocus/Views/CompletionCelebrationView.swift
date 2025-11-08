@@ -10,6 +10,7 @@ import SwiftUI
 struct CompletionCelebrationView: View {
     let celebration: CompletionCelebration
     var onDismiss: () -> Void
+    @Environment(\.themePalette) private var theme
 
     var body: some View {
         VStack(spacing: 24) {
@@ -20,20 +21,20 @@ struct CompletionCelebrationView: View {
 
             Text(celebration.title)
                 .font(.system(size: 24, weight: .bold))
-                .foregroundColor(AppTheme.textPrimary)
+                .foregroundColor(theme.textPrimary)
                 .multilineTextAlignment(.center)
 
             VStack(spacing: 12) {
                 Text("“\(celebration.quote.text)”")
                     .font(.system(size: 18, weight: .medium))
-                    .foregroundColor(AppTheme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
                     .multilineTextAlignment(.center)
                     .lineLimit(nil)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Text("— \(celebration.quote.author)")
                     .font(.system(size: 16))
-                    .foregroundColor(AppTheme.textSecondary)
+                    .foregroundColor(theme.textSecondary)
                     .multilineTextAlignment(.center)
                     .lineLimit(nil)
                     .fixedSize(horizontal: false, vertical: true)
@@ -46,8 +47,8 @@ struct CompletionCelebrationView: View {
                     .font(.system(size: 18, weight: .semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(AppTheme.primary)
-                    .foregroundColor(AppTheme.textPrimary)
+                    .background(theme.primary)
+                    .foregroundColor(theme.textPrimary)
                     .cornerRadius(18)
             }
 
@@ -55,7 +56,7 @@ struct CompletionCelebrationView: View {
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 32)
-        .background(AppTheme.background)
+        .background(theme.background)
     }
 }
 

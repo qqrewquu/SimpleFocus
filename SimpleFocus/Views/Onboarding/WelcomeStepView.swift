@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct WelcomeStepView: View {
+    @Environment(\.themePalette) private var theme
     var body: some View {
         VStack(spacing: 32) {
             Spacer()
@@ -15,15 +16,15 @@ struct WelcomeStepView: View {
             VStack(spacing: 20) {
                 Image(systemName: "sparkles")
                     .font(.system(size: 72, weight: .regular))
-                    .foregroundStyle(AppTheme.accentGradient)
+                    .foregroundStyle(theme.accentGradient)
 
                 Text("欢迎使用 SimpleFocus")
                     .font(.system(size: 34, weight: .bold))
-                    .foregroundColor(AppTheme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
 
             Text("我们相信真正的效率源自专注。每天锁定 2-3 件最重要的任务，让你在忙碌中依旧保持节奏与成就感。")
                     .font(.system(size: 18))
-                    .foregroundColor(AppTheme.textSecondary)
+                    .foregroundColor(theme.textSecondary)
                     .multilineTextAlignment(.center)
                     .lineSpacing(6)
                     .padding(.horizontal, 8)
@@ -58,21 +59,22 @@ private struct FeatureHighlight: View {
     let iconName: String
     let title: String
     let description: String
+    @Environment(\.themePalette) private var theme
 
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
             Image(systemName: iconName)
                 .font(.system(size: 24, weight: .semibold))
-                .foregroundStyle(AppTheme.accentGradient)
+                .foregroundStyle(theme.accentGradient)
                 .frame(width: 32, height: 32)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(title)
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(AppTheme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
                 Text(description)
                     .font(.system(size: 16))
-                    .foregroundColor(AppTheme.textSecondary)
+                    .foregroundColor(theme.textSecondary)
             }
 
             Spacer()
@@ -80,7 +82,7 @@ private struct FeatureHighlight: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(AppTheme.surfaceElevated)
+                .fill(theme.surfaceElevated)
         )
     }
 }

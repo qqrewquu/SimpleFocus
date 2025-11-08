@@ -10,6 +10,7 @@ import SwiftUI
 struct DayCellView: View {
     let day: FocusCalendarDay
     let onSelect: (Date) -> Void
+    @Environment(\.themePalette) private var theme
 
     init(day: FocusCalendarDay, onSelect: @escaping (Date) -> Void) {
         self.day = day
@@ -25,7 +26,7 @@ struct DayCellView: View {
                     let size = geometry.size
                     ZStack(alignment: .bottom) {
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(AppTheme.surfaceMuted)
+                            .fill(theme.surfaceMuted)
 
                         if day.tasks.isEmpty == false {
                             let tieredColor = colorForCompletionTier
@@ -62,7 +63,7 @@ struct DayCellView: View {
     }
 
     private var foregroundColor: Color {
-        day.tasks.isEmpty ? AppTheme.textSecondary : AppTheme.textPrimary
+        day.tasks.isEmpty ? theme.textSecondary : theme.textPrimary
     }
 
     private var completionRatio: CGFloat {
@@ -79,13 +80,13 @@ struct DayCellView: View {
 
         switch ratio {
         case 0:
-            return AppTheme.surfaceMuted
+            return theme.surfaceMuted
         case ..<0.34:
-            return AppTheme.primary.opacity(0.35)
+            return theme.primary.opacity(0.35)
         case ..<0.67:
             return Color(red: 0.0, green: 181 / 255, blue: 1.0).opacity(0.65)
         default:
-            return AppTheme.primary
+            return theme.primary
         }
     }
 

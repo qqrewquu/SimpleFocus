@@ -14,6 +14,7 @@ struct AddTaskSheet: View {
     var onTaskCreated: (TaskItem) -> Void
 
     @State private var errorMessage: String?
+    @Environment(\.themePalette) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -25,21 +26,21 @@ struct AddTaskSheet: View {
 
             Text("新增专注任务")
                 .font(.system(size: 20, weight: .semibold))
-                .foregroundColor(AppTheme.textPrimary)
+                .foregroundColor(theme.textPrimary)
 
             VStack(alignment: .leading, spacing: 8) {
                 TextField("输入任务（最多20字）", text: $viewModel.content)
                     .textFieldStyle(.plain)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 14)
-                    .background(AppTheme.background.opacity(0.6))
+                    .background(theme.background.opacity(0.6))
                     .cornerRadius(14)
-                    .foregroundColor(AppTheme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
                     .submitLabel(.done)
 
                 Text("建议：任务保持在20字以内，以便锁屏显示。")
                     .font(.footnote)
-                    .foregroundColor(AppTheme.textSecondary)
+                    .foregroundColor(theme.textSecondary)
 
                 if let limitState {
                     VStack(alignment: .leading, spacing: 4) {
@@ -48,7 +49,7 @@ struct AddTaskSheet: View {
                             .foregroundColor(.red.opacity(0.85))
                         Text(limitState.encouragement)
                             .font(.footnote)
-                            .foregroundColor(AppTheme.textSecondary)
+                            .foregroundColor(theme.textSecondary)
                     }
                     .multilineTextAlignment(.leading)
                 }
@@ -57,7 +58,7 @@ struct AddTaskSheet: View {
                     Spacer()
                     Text("\(viewModel.content.count)/\(AddTaskViewModel.maxLength)")
                         .font(.caption)
-                        .foregroundColor(AppTheme.textSecondary)
+                        .foregroundColor(theme.textSecondary)
                 }
             }
 
@@ -72,8 +73,8 @@ struct AddTaskSheet: View {
                     .font(.system(size: 18, weight: .semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(submitEnabled ? AppTheme.primary : AppTheme.primary.opacity(0.4))
-                    .foregroundColor(AppTheme.textPrimary)
+                    .background(submitEnabled ? theme.primary : theme.primary.opacity(0.4))
+                    .foregroundColor(theme.textPrimary)
                     .cornerRadius(18)
             }
             .disabled(!submitEnabled)
@@ -82,7 +83,7 @@ struct AddTaskSheet: View {
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 32)
-        .background(AppTheme.background)
+        .background(theme.background)
     }
 
     private var submitEnabled: Bool {

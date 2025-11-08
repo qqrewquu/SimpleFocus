@@ -8,6 +8,7 @@ struct SimpleFocusApp: App {
     private let liveActivityController: LiveActivityLifecycleController?
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     @AppStorage("pendingOnboardingTask") private var pendingOnboardingTask: String = ""
+    @StateObject private var themeManager = ThemeManager()
 
     init() {
         do {
@@ -57,25 +58,30 @@ struct SimpleFocusApp: App {
 
     var body: some Scene {
         WindowGroup {
-            if hasCompletedOnboarding {
-                MainTabView(store: store,
-                            container: container,
-                            liveActivityController: liveActivityController)
-            } else {
-                OnboardingView(
-                    viewModel: OnboardingViewModel(
-                        onFinish: { goal in
-                            pendingOnboardingTask = goal
-                            hasCompletedOnboarding = true
-                        },
-                        onSkip: {
-                            pendingOnboardingTask = ""
-                            hasCompletedOnboarding = true
-                        }
+            Group {
+                if hasCompletedOnboarding {
+                    MainTabView(store: store,
+                                container: container,
+                                liveActivityController: liveActivityController)
+                } else {
+                    OnboardingView(
+                        viewModel: OnboardingViewModel(
+                            onFinish: { goal in
+                                pendingOnboardingTask = goal
+                                hasCompletedOnboarding = true
+                            },
+                            onSkip: {
+                                pendingOnboardingTask = ""
+                                hasCompletedOnboarding = true
+                            }
+                        )
                     )
-                )
-                .modelContainer(container)
+                    .modelContainer(container)
+                }
             }
+            .environmentObject(themeManager)
+            .environment(\.themePalette, themeManager.palette)
+            .preferredColorScheme(themeManager.mode == .dark ? .dark : .light)
         }
     }
 }

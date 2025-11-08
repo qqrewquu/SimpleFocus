@@ -11,6 +11,7 @@ struct DayDetailView: View {
     let date: Date
     let tasks: [TaskItem]
     let titleText: String
+    @Environment(\.themePalette) private var theme
 
     private var completedTasks: [TaskItem] {
         tasks.filter(\.isCompleted)
@@ -29,8 +30,8 @@ struct DayDetailView: View {
             VStack(alignment: .leading, spacing: 20) {
                 header
                 summary
-                taskSection(title: "已完成任务", tasks: completedTasks, accent: AppTheme.primary, icon: "checkmark.circle.fill")
-                taskSection(title: "未完成任务", tasks: incompleteTasks, accent: AppTheme.warning, icon: "circle")
+                taskSection(title: "已完成任务", tasks: completedTasks, accent: theme.primary, icon: "checkmark.circle.fill")
+                taskSection(title: "未完成任务", tasks: incompleteTasks, accent: theme.warning, icon: "circle")
 
                 if tasks.isEmpty {
                     emptyState
@@ -40,19 +41,19 @@ struct DayDetailView: View {
             .padding(.top, 24)
             .padding(.bottom, 32)
         }
-        .background(AppTheme.background.ignoresSafeArea())
+        .background(theme.background.ignoresSafeArea())
     }
 
     private var header: some View {
         Text(titleText)
             .font(.system(size: 20, weight: .bold))
-            .foregroundColor(AppTheme.textPrimary)
+            .foregroundColor(theme.textPrimary)
     }
 
     private var summary: some View {
         Text(summaryText)
             .font(.system(size: 15, weight: .medium))
-            .foregroundColor(AppTheme.textSecondary)
+            .foregroundColor(theme.textSecondary)
     }
 
     private func taskSection(title: String,
@@ -76,10 +77,10 @@ struct DayDetailView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("当日暂无任务记录")
                 .font(.system(size: 17, weight: .semibold))
-                .foregroundColor(AppTheme.textPrimary)
+                .foregroundColor(theme.textPrimary)
             Text("保持专注，明天继续创造进步吧。")
                 .font(.system(size: 15))
-                .foregroundColor(AppTheme.textSecondary)
+                .foregroundColor(theme.textSecondary)
         }
     }
 }
@@ -88,6 +89,7 @@ private struct DayDetailTaskRow: View {
     let task: TaskItem
     let accent: Color
     let icon: String
+    @Environment(\.themePalette) private var theme
 
     var body: some View {
         HStack(spacing: 14) {
@@ -103,10 +105,10 @@ private struct DayDetailTaskRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.content)
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(AppTheme.textPrimary)
+                    .foregroundColor(theme.textPrimary)
                 Text(task.creationDate, style: .time)
                     .font(.system(size: 12))
-                    .foregroundColor(AppTheme.textSecondary)
+                    .foregroundColor(theme.textSecondary)
             }
 
             Spacer()
@@ -115,7 +117,7 @@ private struct DayDetailTaskRow: View {
         .padding(.horizontal, 12)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(AppTheme.surfaceElevated)
+                .fill(theme.surfaceElevated)
         )
     }
 }

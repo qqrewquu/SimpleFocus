@@ -12,6 +12,7 @@ import UIKit
 struct BonsaiView: View {
     @ObservedObject var controller: BonsaiController
     @AppStorage("hasNewBonsaiGrowth") private var hasNewBonsaiGrowth: Bool = false
+    @Environment(\.themePalette) private var theme
 
     private let stages: [BonsaiStage] = [
         .init(range: 0...2,
@@ -52,7 +53,7 @@ struct BonsaiView: View {
             .padding(.top, 32)
             .padding(.bottom, 48)
         }
-        .background(AppTheme.background.ignoresSafeArea())
+        .background(theme.background.ignoresSafeArea())
         .onAppear {
             hasNewBonsaiGrowth = false
         }
@@ -64,10 +65,10 @@ struct BonsaiView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("我的专注盆景")
                 .font(.system(size: 32, weight: .bold))
-                .foregroundColor(AppTheme.textPrimary)
+                .foregroundColor(theme.textPrimary)
             Text("已连续专注 \(controller.bonsai.growthPoints) 天")
                 .font(.system(size: 17, weight: .semibold))
-                .foregroundColor(AppTheme.textSecondary)
+                .foregroundColor(theme.textSecondary)
         }
     }
 
@@ -78,20 +79,20 @@ struct BonsaiView: View {
                 .frame(height: 260)
                 .background(
                     RoundedRectangle(cornerRadius: 32)
-                        .fill(AppTheme.surfaceElevated)
+                        .fill(theme.surfaceElevated)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 32)
-                        .stroke(AppTheme.surfaceMuted, lineWidth: 1)
+                        .stroke(theme.surfaceMuted, lineWidth: 1)
                 )
 
             Text(currentStage.title)
                 .font(.system(size: 20, weight: .semibold))
-                .foregroundColor(AppTheme.textPrimary)
+                .foregroundColor(theme.textPrimary)
 
             Text(currentStage.message)
                 .font(.system(size: 16))
-                .foregroundColor(AppTheme.textSecondary)
+                .foregroundColor(theme.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 16)
         }
@@ -101,7 +102,7 @@ struct BonsaiView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("成长轨迹")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(AppTheme.textPrimary)
+                .foregroundColor(theme.textPrimary)
 
             HStack(spacing: 16) {
                 summaryItem(title: "成长值",
@@ -112,12 +113,12 @@ struct BonsaiView: View {
 
             ProgressView(value: progressTowardsNextStage)
                 .progressViewStyle(.linear)
-                .tint(AppTheme.primary)
+                .tint(theme.primary)
         }
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 24)
-                .fill(AppTheme.surfaceElevated)
+                .fill(theme.surfaceElevated)
         )
     }
 
@@ -125,16 +126,16 @@ struct BonsaiView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("成长提示")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(AppTheme.textPrimary)
+                .foregroundColor(theme.textPrimary)
             Text("只要坚持完成当天所有任务，盆景就会迎来新的变化。它不会因为暂时的停顿而枯萎，请放轻松继续向前。")
                 .font(.system(size: 15))
-                .foregroundColor(AppTheme.textSecondary)
+                .foregroundColor(theme.textSecondary)
                 .lineSpacing(4)
         }
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 24)
-                .fill(AppTheme.surfaceMuted)
+                .fill(theme.surfaceMuted)
         )
     }
 
@@ -151,10 +152,10 @@ struct BonsaiView: View {
             VStack(spacing: 8) {
                 Image(systemName: "photo")
                     .font(.system(size: 28, weight: .semibold))
-                    .foregroundColor(AppTheme.textSecondary)
+                    .foregroundColor(theme.textSecondary)
                 Text("缺少 \(imageName).png")
                     .font(.system(size: 14))
-                    .foregroundColor(AppTheme.textSecondary)
+                    .foregroundColor(theme.textSecondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -164,10 +165,10 @@ struct BonsaiView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.system(size: 14))
-                .foregroundColor(AppTheme.textSecondary)
+                .foregroundColor(theme.textSecondary)
             Text(value)
                 .font(.system(size: 17, weight: .semibold))
-                .foregroundColor(AppTheme.textPrimary)
+                .foregroundColor(theme.textPrimary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
