@@ -19,6 +19,7 @@ struct MainTabView: View {
     private let store: TaskStore
     private let container: ModelContainer
     private let liveActivityController: LiveActivityLifecycleController?
+    @AppStorage("hasNewBonsaiGrowth") private var hasNewBonsaiGrowth: Bool = false
 
     @State private var selectedTab: Tab = .home
     @StateObject private var focusCalendarViewModel: FocusCalendarViewModel
@@ -41,7 +42,8 @@ struct MainTabView: View {
         TabView(selection: $selectedTab) {
             ContentView(store: store,
                         liveActivityController: liveActivityController,
-                        focusCalendarViewModel: focusCalendarViewModel)
+                        focusCalendarViewModel: focusCalendarViewModel,
+                        bonsaiController: bonsaiController)
                 .tabItem {
                     Label("主页", systemImage: "list.bullet")
                 }
@@ -52,6 +54,7 @@ struct MainTabView: View {
                     Label("盆景", systemImage: "leaf.fill")
                 }
                 .tag(Tab.bonsai)
+                .badge(hasNewBonsaiGrowth ? "●" : nil)
 
             HistoryView(calendarViewModel: focusCalendarViewModel,
                         showsDismissButton: false)
@@ -69,5 +72,10 @@ struct MainTabView: View {
         }
         .background(AppTheme.background.ignoresSafeArea())
         .modelContainer(container)
+        .onChange(of: selectedTab) { _, newValue in
+            if newValue == .bonsai {
+                hasNewBonsaiGrowth = false
+            }
+        }
     }
 }

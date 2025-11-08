@@ -14,15 +14,41 @@ final class BonsaiController: ObservableObject {
     @Published private(set) var bonsai: Bonsai
 
     private let modelContext: ModelContext
+    private let calendar: Calendar
 
-    init(modelContext: ModelContext) {
+    init(modelContext: ModelContext,
+         calendar: Calendar = .current) {
         self.modelContext = modelContext
+        self.calendar = calendar
         self.bonsai = BonsaiController.fetchOrCreate(in: modelContext)
     }
 
     func refresh() {
         if let latest = try? BonsaiController.fetchExisting(in: modelContext) {
             bonsai = latest
+        }
+    }
+
+    @discardableResult
+    func registerGrowthIfNeeded(for referenceDate: Date) -> Bool {
+        let dayAnchor = calendar.startOfDay(for: referenceDate)
+        if let last = bonsai.lastGrowthDate,
+           calendar.isDate(last, inSameDayAs: dayAnchor) {
+            return false
+        }
+
+        objectWillChange.send()
+        bonsai.growthPoints += 1
+        bonsai.lastGrowthDate = dayAnchor
+        persistChanges()
+        return true
+    }
+
+    private func persistChanges() {
+        do {
+            try modelContext.save()
+        } catch {
+            print("[BonsaiController] Failed to persist Bonsai changes: \(error)")
         }
     }
 

@@ -6,8 +6,11 @@ struct ContentView: View {
     @StateObject private var viewModel: TaskListViewModel
     @StateObject private var addTaskViewModel: AddTaskViewModel
     @ObservedObject private var focusCalendarViewModel: FocusCalendarViewModel
+    @ObservedObject private var bonsaiController: BonsaiController
+    private let store: TaskStore
 
     @State private var isPresentingAddTask = false
+    @AppStorage("hasNewBonsaiGrowth") private var hasNewBonsaiGrowth: Bool = false
     @AppStorage("pendingOnboardingTask") private var pendingOnboardingTask: String = ""
 
     @State private var editingTask: TaskItem?
@@ -25,7 +28,9 @@ struct ContentView: View {
     @MainActor
     init(store: TaskStore,
          liveActivityController: LiveActivityLifecycleController? = nil,
-         focusCalendarViewModel: FocusCalendarViewModel? = nil) {
+         focusCalendarViewModel: FocusCalendarViewModel? = nil,
+         bonsaiController: BonsaiController) {
+        self.store = store
         let taskListViewModel = TaskListViewModel(store: store)
         if let liveActivityController {
             taskListViewModel.setLiveActivityController(liveActivityController)
@@ -34,6 +39,7 @@ struct ContentView: View {
         _viewModel = StateObject(wrappedValue: taskListViewModel)
         _addTaskViewModel = StateObject(wrappedValue: AddTaskViewModel(store: store))
         _focusCalendarViewModel = ObservedObject(initialValue: calendarViewModel)
+        _bonsaiController = ObservedObject(initialValue: bonsaiController)
     }
 
     var body: some View {
@@ -246,14 +252,18 @@ struct ContentView: View {
 
 private struct PreviewContainerView: View {
     @State private var container: ModelContainer = {
-        let schema = Schema([TaskItem.self])
+        let schema = Schema([TaskItem.self, Bonsai.self])
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         return try! ModelContainer(for: schema, configurations: configuration)
     }()
 
     var body: some View {
         let store = TaskStore(modelContext: container.mainContext)
-        return ContentView(store: store)
+        let focusVM = FocusCalendarViewModel(store: store)
+        let bonsaiController = BonsaiController(modelContext: container.mainContext)
+        return ContentView(store: store,
+                           focusCalendarViewModel: focusVM,
+                           bonsaiController: bonsaiController)
             .modelContainer(container)
     }
 }
@@ -410,6 +420,7 @@ private extension ContentView {
                 try await viewModel.refresh()
                 WidgetCenter.shared.reloadAllTimelines()
                 await focusCalendarViewModel.refresh()
+                await evaluateBonsaiGrowth()
             } catch {
                 assertionFailure("Failed to refresh after adding task: \(error)")
             }
@@ -442,6 +453,7 @@ private extension ContentView {
                 Task {
                     WidgetCenter.shared.reloadAllTimelines()
                     await calendarViewModel.refresh()
+                    await evaluateBonsaiGrowth()
                 }
             }
         }
@@ -518,6 +530,7 @@ private extension ContentView {
             try await viewModel.edit(task: task, newContent: normalized)
             WidgetCenter.shared.reloadAllTimelines()
             await focusCalendarViewModel.refresh()
+            await evaluateBonsaiGrowth()
             endEditing()
             print("[InlineEdit] commit success: updated to \(normalized)")
             return true
@@ -557,6 +570,7 @@ private extension ContentView {
                 try await viewModel.resetTodayTasks()
                 addTaskViewModel.content = ""
                 await focusCalendarViewModel.refresh()
+                await evaluateBonsaiGrowth()
             } catch {
                 assertionFailure("Failed to clear today's tasks: \(error)")
             }
@@ -568,4 +582,18 @@ private extension ContentView {
         UserDefaults.standard.removeObject(forKey: "hasCompletedOnboarding")
     }
 #endif
+
+    private func evaluateBonsaiGrowth(referenceDate: Date = Date()) async {
+        do {
+            let tasks = try await store.fetchTasksForToday(referenceDate: referenceDate)
+            guard !tasks.isEmpty else { return }
+            guard tasks.allSatisfy(\.isCompleted) else { return }
+            let didGrow = bonsaiController.registerGrowthIfNeeded(for: referenceDate)
+            if didGrow {
+                hasNewBonsaiGrowth = true
+            }
+        } catch {
+            print("[Bonsai] Failed to evaluate growth: \(error)")
+        }
+    }
 }
