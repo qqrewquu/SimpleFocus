@@ -5,12 +5,9 @@ import WidgetKit
 struct ContentView: View {
     @StateObject private var viewModel: TaskListViewModel
     @StateObject private var addTaskViewModel: AddTaskViewModel
-    @StateObject private var historyViewModel: HistoryViewModel
-    @StateObject private var historyNavigation = HistoryNavigationState()
-    @StateObject private var settingsViewModel: SettingsViewModel
+    @ObservedObject private var focusCalendarViewModel: FocusCalendarViewModel
 
     @State private var isPresentingAddTask = false
-    @State private var isPresentingSettings = false
     @AppStorage("pendingOnboardingTask") private var pendingOnboardingTask: String = ""
 
     @State private var editingTask: TaskItem?
@@ -26,15 +23,17 @@ struct ContentView: View {
 #endif
 
     @MainActor
-    init(store: TaskStore, liveActivityController: LiveActivityLifecycleController? = nil) {
+    init(store: TaskStore,
+         liveActivityController: LiveActivityLifecycleController? = nil,
+         focusCalendarViewModel: FocusCalendarViewModel? = nil) {
         let taskListViewModel = TaskListViewModel(store: store)
         if let liveActivityController {
             taskListViewModel.setLiveActivityController(liveActivityController)
         }
+        let calendarViewModel = focusCalendarViewModel ?? FocusCalendarViewModel(store: store)
         _viewModel = StateObject(wrappedValue: taskListViewModel)
         _addTaskViewModel = StateObject(wrappedValue: AddTaskViewModel(store: store))
-        _historyViewModel = StateObject(wrappedValue: HistoryViewModel(store: store))
-        _settingsViewModel = StateObject(wrappedValue: SettingsViewModel(scheduler: ReminderNotificationScheduler()))
+        _focusCalendarViewModel = ObservedObject(initialValue: calendarViewModel)
     }
 
     var body: some View {
@@ -95,18 +94,6 @@ struct ContentView: View {
             .presentationDragIndicator(.visible)
             .presentationBackground(AppTheme.background)
         }
-        .sheet(isPresented: historySheetBinding) {
-            HistoryView(viewModel: historyViewModel)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
-                .presentationBackground(AppTheme.background)
-        }
-        .sheet(isPresented: $isPresentingSettings) {
-            SettingsView(viewModel: settingsViewModel)
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-                .presentationBackground(AppTheme.background)
-        }
         .sheet(item: Binding(
             get: { viewModel.celebration },
             set: { value in
@@ -131,7 +118,6 @@ struct ContentView: View {
                 .foregroundColor(AppTheme.textPrimary)
 
             HStack {
-                historyButton
                 Spacer()
                 if editingTask != nil {
                     Button("完成") {
@@ -142,7 +128,6 @@ struct ContentView: View {
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(AppTheme.primary)
                 }
-                settingsButton
 #if DEBUG
                 debugMenu
 #endif
@@ -175,53 +160,6 @@ struct ContentView: View {
         .contentShape(Rectangle())
     }
 #endif
-
-    private var settingsButton: some View {
-        Button {
-            isPresentingSettings = true
-        } label: {
-            Image(systemName: "gearshape.fill")
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundColor(AppTheme.textSecondary)
-                .padding(8)
-        }
-        .contentShape(Rectangle())
-        .accessibilityLabel("打开设置")
-    }
-
-    private var historyButton: some View {
-        Button {
-            if editingTask == nil {
-                historyNavigation.showHistory()
-            } else {
-                Task {
-                    let success = await commitEditing()
-                    if success {
-                        await MainActor.run {
-                            historyNavigation.showHistory()
-                        }
-                    }
-                }
-            }
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "clock.arrow.circlepath")
-                    .font(.system(size: 18, weight: .semibold))
-                Text("历史")
-                    .font(.system(size: 17, weight: .semibold))
-            }
-            .foregroundColor(AppTheme.textSecondary)
-            .padding(.vertical, 6)
-            .padding(.horizontal, 12)
-            .background(
-                Capsule()
-                    .fill(AppTheme.surfaceElevated)
-            )
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("查看历史记录")
-        .offset(x: -16)
-    }
 
     @ViewBuilder
     private var content: some View {
@@ -466,25 +404,12 @@ private struct LimitReachedView: View {
 
 
 private extension ContentView {
-    var historySheetBinding: Binding<Bool> {
-        Binding(
-            get: { historyNavigation.isShowingHistory },
-            set: { newValue in
-                if newValue {
-                    historyNavigation.showHistory()
-                } else {
-                    historyNavigation.dismissHistory()
-                }
-            }
-        )
-    }
-
     func awaitRefreshAfterAdding(task: TaskItem) {
         Task {
             do {
                 try await viewModel.refresh()
                 WidgetCenter.shared.reloadAllTimelines()
-                try await historyViewModel.loadHistory()
+                await focusCalendarViewModel.refresh()
             } catch {
                 assertionFailure("Failed to refresh after adding task: \(error)")
             }
@@ -512,11 +437,11 @@ private extension ContentView {
                 let success = await commitEditing()
                 guard success else { return }
             }
-            let historyViewModel = historyViewModel
+            let calendarViewModel = focusCalendarViewModel
             viewModel.toggleCompletion(for: task) {
                 Task {
                     WidgetCenter.shared.reloadAllTimelines()
-                    try? await historyViewModel.loadHistory()
+                    await calendarViewModel.refresh()
                 }
             }
         }
@@ -592,7 +517,7 @@ private extension ContentView {
         do {
             try await viewModel.edit(task: task, newContent: normalized)
             WidgetCenter.shared.reloadAllTimelines()
-            try await historyViewModel.loadHistory()
+            await focusCalendarViewModel.refresh()
             endEditing()
             print("[InlineEdit] commit success: updated to \(normalized)")
             return true
@@ -631,7 +556,7 @@ private extension ContentView {
             do {
                 try await viewModel.resetTodayTasks()
                 addTaskViewModel.content = ""
-                try await historyViewModel.loadHistory()
+                await focusCalendarViewModel.refresh()
             } catch {
                 assertionFailure("Failed to clear today's tasks: \(error)")
             }

@@ -58,8 +58,9 @@ struct SimpleFocusApp: App {
     var body: some Scene {
         WindowGroup {
             if hasCompletedOnboarding {
-                ContentView(store: store, liveActivityController: liveActivityController)
-                    .modelContainer(container)
+                MainTabView(store: store,
+                            container: container,
+                            liveActivityController: liveActivityController)
             } else {
                 OnboardingView(
                     viewModel: OnboardingViewModel(

@@ -10,6 +10,7 @@ import UIKit
 
 struct SettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
+    var showsDoneButton: Bool = true
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
 
@@ -29,11 +30,13 @@ struct SettingsView: View {
             .navigationTitle("设置")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("完成") {
-                        dismiss()
+                if showsDoneButton {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("完成") {
+                            dismiss()
+                        }
+                        .foregroundColor(AppTheme.primary)
                     }
-                    .foregroundColor(AppTheme.primary)
                 }
             }
         }
