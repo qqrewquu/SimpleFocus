@@ -49,7 +49,7 @@ struct MainTabView: View {
                 }
                 .tag(Tab.home)
 
-            BonsaiPlaceholderView(controller: bonsaiController)
+            BonsaiView(controller: bonsaiController)
                 .tabItem {
                     Label("盆景", systemImage: "leaf.fill")
                 }
