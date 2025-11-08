@@ -592,12 +592,16 @@ private extension ContentView {
             let tasks = try await store.fetchTasksForToday(referenceDate: referenceDate)
             guard !tasks.isEmpty else { return }
             guard tasks.allSatisfy(\.isCompleted) else { return }
-            let didGrow = bonsaiController.registerGrowthIfNeeded(for: referenceDate)
-            if didGrow {
+            if let change = bonsaiController.registerGrowthIfNeeded(for: referenceDate) {
                 hasNewBonsaiGrowth = true
+                if Self.bonsaiReviewThresholds.contains(where: { change.previous < $0 && change.current >= $0 }) {
+                    AppState.attemptReviewRequest(source: "bonsai_growth_\(change.current)")
+                }
             }
         } catch {
             print("[Bonsai] Failed to evaluate growth: \(error)")
         }
     }
+
+    private static let bonsaiReviewThresholds: [Int] = [3, 8, 16, 31, 51]
 }

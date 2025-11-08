@@ -30,18 +30,19 @@ final class BonsaiController: ObservableObject {
     }
 
     @discardableResult
-    func registerGrowthIfNeeded(for referenceDate: Date) -> Bool {
+    func registerGrowthIfNeeded(for referenceDate: Date) -> (previous: Int, current: Int)? {
         let dayAnchor = calendar.startOfDay(for: referenceDate)
         if let last = bonsai.lastGrowthDate,
            calendar.isDate(last, inSameDayAs: dayAnchor) {
-            return false
+            return nil
         }
 
         objectWillChange.send()
+        let previous = bonsai.growthPoints
         bonsai.growthPoints += 1
         bonsai.lastGrowthDate = dayAnchor
         persistChanges()
-        return true
+        return (previous, bonsai.growthPoints)
     }
 
     private func persistChanges() {

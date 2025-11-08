@@ -187,6 +187,7 @@ final class TaskListViewModel: ObservableObject {
 
         if previousCount > 0 && fetched.isEmpty {
             celebration = celebrationProvider.nextCelebration()
+            AppState.attemptReviewRequest(source: "completed_first_day_tasks")
         }
 
         pruneCompletedAnimationFlags()

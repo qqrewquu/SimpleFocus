@@ -187,6 +187,9 @@ final class OnboardingViewModel: ObservableObject {
 
     func finish() {
         maxUnlockedStepIndex = Step.focusCard.rawValue
+        if AppState.hasAttemptedReviewRequest == false {
+            AppState.attemptReviewRequest(source: "onboarding_completion")
+        }
         onFinish(trimmedFirstGoal)
     }
 }
