@@ -36,7 +36,7 @@ struct SimpleFocusApp: App {
                 fatalError("Unable to locate shared App Group container file.")
             }
             let configuration = ModelConfiguration(url: sharedURL)
-            container = try ModelContainer(for: TaskItem.self, configurations: configuration)
+            container = try ModelContainer(for: TaskItem.self, Bonsai.self, configurations: configuration)
         } catch {
             fatalError("Failed to create model container: \(error)")
         }

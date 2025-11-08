@@ -23,6 +23,7 @@ struct MainTabView: View {
     @State private var selectedTab: Tab = .home
     @StateObject private var focusCalendarViewModel: FocusCalendarViewModel
     @StateObject private var settingsViewModel: SettingsViewModel
+    @StateObject private var bonsaiController: BonsaiController
 
     init(store: TaskStore,
          container: ModelContainer,
@@ -30,8 +31,10 @@ struct MainTabView: View {
         self.store = store
         self.container = container
         self.liveActivityController = liveActivityController
+        let context = container.mainContext
         _focusCalendarViewModel = StateObject(wrappedValue: FocusCalendarViewModel(store: store))
         _settingsViewModel = StateObject(wrappedValue: SettingsViewModel(scheduler: ReminderNotificationScheduler()))
+        _bonsaiController = StateObject(wrappedValue: BonsaiController(modelContext: context))
     }
 
     var body: some View {
@@ -44,7 +47,7 @@ struct MainTabView: View {
                 }
                 .tag(Tab.home)
 
-            BonsaiPlaceholderView()
+            BonsaiPlaceholderView(controller: bonsaiController)
                 .tabItem {
                     Label("盆景", systemImage: "leaf.fill")
                 }
