@@ -19,6 +19,7 @@ struct AppThemePalette {
     let accentGradient: LinearGradient
     let tabActive: Color
     let tabInactive: Color
+    let tabBackground: Color
 }
 
 enum AppTheme {
@@ -42,7 +43,8 @@ enum AppTheme {
             endPoint: .bottomTrailing
         ),
         tabActive: Color(red: 10 / 255, green: 132 / 255, blue: 1.0),
-        tabInactive: Color.white.opacity(0.45)
+        tabInactive: Color.white.opacity(0.45),
+        tabBackground: Color(red: 15 / 255, green: 20 / 255, blue: 30 / 255)
     )
 
     static let light = AppThemePalette(
@@ -63,6 +65,7 @@ enum AppTheme {
             endPoint: .bottomTrailing
         ),
         tabActive: Color(red: 0 / 255, green: 122 / 255, blue: 255 / 255),
-        tabInactive: Color(red: 70 / 255, green: 82 / 255, blue: 96 / 255)
+        tabInactive: Color(red: 70 / 255, green: 82 / 255, blue: 96 / 255),
+        tabBackground: Color.white
     )
 }

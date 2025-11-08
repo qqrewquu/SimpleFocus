@@ -92,7 +92,7 @@ struct MainTabView: View {
     private func applyTabAppearance(for palette: AppThemePalette) {
         let appearance = UITabBarAppearance()
         appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = UIColor(palette.background)
+        appearance.backgroundColor = UIColor(palette.tabBackground)
 
         let itemAppearance = UITabBarItemAppearance()
         itemAppearance.normal.iconColor = UIColor(palette.tabInactive)
