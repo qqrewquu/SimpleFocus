@@ -4,16 +4,19 @@ import WidgetKit
 
 struct ContentView: View {
     @StateObject private var viewModel: TaskListViewModel
-    @StateObject private var addTaskViewModel: AddTaskViewModel
     @ObservedObject private var focusCalendarViewModel: FocusCalendarViewModel
     @ObservedObject private var bonsaiController: BonsaiController
     private let store: TaskStore
     @Environment(\.themePalette) private var theme
 
-    @State private var isPresentingAddTask = false
     @AppStorage("hasNewBonsaiGrowth") private var hasNewBonsaiGrowth: Bool = false
     @AppStorage("pendingOnboardingTask") private var pendingOnboardingTask: String = ""
 
+    @State private var inlineTaskContent: String = ""
+    @State private var inlineErrorMessage: String?
+    @FocusState private var isInlineInputFocused: Bool
+    @State private var inlineInputFrame: CGRect = .zero
+    @State private var editingRowFrame: CGRect = .zero
     @State private var editingTask: TaskItem?
     @State private var editingText: String = ""
     @State private var editingOriginalText: String = ""
@@ -38,27 +41,21 @@ struct ContentView: View {
         }
         let calendarViewModel = focusCalendarViewModel ?? FocusCalendarViewModel(store: store)
         _viewModel = StateObject(wrappedValue: taskListViewModel)
-        _addTaskViewModel = StateObject(wrappedValue: AddTaskViewModel(store: store))
         _focusCalendarViewModel = ObservedObject(initialValue: calendarViewModel)
         _bonsaiController = ObservedObject(initialValue: bonsaiController)
     }
 
     var body: some View {
-        ZStack(alignment: .bottomTrailing) {
-            VStack(spacing: 16) {
-                header
-                content
-            }
-            .padding(.horizontal, 24)
-            .padding(.top, 48)
-            .padding(.bottom, 32)
-
-            if viewModel.canAddTask {
-                addTaskButton
-            }
+        VStack(spacing: 16) {
+            header
+            content
         }
+        .padding(.horizontal, 24)
+        .padding(.top, 48)
+        .padding(.bottom, 32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(theme.background.ignoresSafeArea())
+        .coordinateSpace(name: "content-space")
         .task {
             try? await viewModel.refresh()
             await MainActor.run {
@@ -68,9 +65,40 @@ struct ContentView: View {
         .onChange(of: pendingOnboardingTask) { _, _ in
             handlePendingOnboardingPrefill()
         }
-        .onChange(of: isPresentingAddTask) { _, newValue in
-            if !newValue {
-                pendingOnboardingTask = ""
+        .onChange(of: editingTask?.id) { _, newValue in
+            if newValue == nil {
+                editingRowFrame = .zero
+            }
+        }
+        .onChange(of: isInlineInputFocused) { _, isFocused in
+            if !isFocused {
+                handleInlineFocusLost()
+            }
+        }
+        .onChange(of: inlineTaskContent) { _, newValue in
+            if !newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                inlineErrorMessage = nil
+            }
+        }
+        .onPreferenceChange(InlineInputFramePreferenceKey.self) { newFrame in
+            inlineInputFrame = newFrame
+        }
+        .onPreferenceChange(EditingRowFramePreferenceKey.self) { newFrame in
+            editingRowFrame = newFrame
+        }
+        .overlay(alignment: .center) {
+            if isInlineInputFocused || editingTask != nil {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 0, coordinateSpace: .named("content-space"))
+                            .onEnded { value in
+                                let translation = value.translation
+                                let tapLike = abs(translation.width) < 6 && abs(translation.height) < 6
+                                guard tapLike else { return }
+                                handleGlobalTap(at: value.location)
+                            }
+                    )
             }
         }
 #if DEBUG
@@ -91,16 +119,6 @@ struct ContentView: View {
             Text("此操作会清除引导完成状态。重启应用后将重新进入 Onboarding。")
         }
 #endif
-        .sheet(isPresented: $isPresentingAddTask) {
-            AddTaskSheet(viewModel: addTaskViewModel,
-                         limitState: viewModel.limitState) { newTask in
-                isPresentingAddTask = false
-                awaitRefreshAfterAdding(task: newTask)
-            }
-            .presentationDetents([.fraction(0.38), .medium])
-            .presentationDragIndicator(.visible)
-            .presentationBackground(theme.background)
-        }
         .sheet(item: Binding(
             get: { viewModel.celebration },
             set: { value in
@@ -124,7 +142,12 @@ struct ContentView: View {
                 .font(.system(size: 32, weight: .bold))
                 .foregroundColor(theme.textPrimary)
 
-            HStack {
+            HStack(spacing: 12) {
+#if DEBUG
+                debugMenu
+#else
+                Color.clear.frame(width: 32, height: 32)
+#endif
                 Spacer()
                 if editingTask != nil {
                     Button("完成") {
@@ -134,10 +157,13 @@ struct ContentView: View {
                     }
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(theme.primary)
+                } else if canSubmitInlineTask {
+                    Button("完成") {
+                        submitInlineTask()
+                    }
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(theme.primary)
                 }
-#if DEBUG
-                debugMenu
-#endif
             }
             .padding(.horizontal, 4)
         }
@@ -170,80 +196,111 @@ struct ContentView: View {
 
     @ViewBuilder
     private var content: some View {
-        if viewModel.hasTasks {
-            List {
-                ForEach(viewModel.tasks) { task in
-                    if let editingTask, editingTask.id == task.id {
-                        EditingTaskRow(task: task,
-                                       isPending: viewModel.isPendingCompletion(task.id),
-                                       text: $editingText,
-                                       errorMessage: editingErrorMessage,
-                                       focusBinding: $focusedTaskID,
-                                       onComplete: { completeTask(task) },
-                                       onSubmit: {
-                                           Task { _ = await commitEditing() }
-                                       },
-                                       onFocusLost: {
-                                           handleFocusLost(for: task.id)
-                                       })
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                    } else {
-                        DisplayTaskRow(task: task,
-                                        isPending: viewModel.isPendingCompletion(task.id),
-                                        onComplete: { completeTask(task) },
-                                        onEdit: { beginEditing(task) })
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                    }
-                }
+        let tasks = viewModel.tasks
+        List {
+            listContent(for: tasks)
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Color.clear)
+        .onChange(of: editingText) { _, newValue in
+            if editingTask != nil && !newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                editingErrorMessage = nil
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .background(Color.clear)
-            .onChange(of: editingText) { _, newValue in
-                if editingTask != nil && !newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    editingErrorMessage = nil
-                }
-            }
-        } else if let limitState = viewModel.limitState {
-            Spacer()
-            LimitReachedView(limitState: limitState)
-            Spacer()
-        } else {
-            Spacer()
-            Text("请添加你的第一个专注任务")
-                .font(.system(size: 18, weight: .medium))
-                .foregroundColor(theme.textSecondary)
-            Spacer()
         }
     }
 
-    private var addTaskButton: some View {
-        Button {
-            if editingTask == nil {
-                isPresentingAddTask = true
-            } else {
-                Task {
-                    let success = await commitEditing()
-                    if success {
-                        await MainActor.run {
-                            isPresentingAddTask = true
-                        }
-                    }
-                }
-            }
-        } label: {
-            Image(systemName: "plus")
-                .font(.system(size: 28, weight: .bold))
-                .frame(width: 64, height: 64)
-                .foregroundColor(theme.textPrimary)
-                .background(theme.primary)
-                .clipShape(Circle())
-                .shadow(color: .black.opacity(0.4), radius: 16, x: 0, y: 8)
+    private func inlineAddRow(isEmptyState: Bool) -> some View {
+        InlineAddTaskRow(text: $inlineTaskContent,
+                         placeholder: placeholderText(totalTaskCount: viewModel.totalTasksToday),
+                         isEmptyState: isEmptyState,
+                         errorMessage: inlineErrorMessage,
+                         focusBinding: $isInlineInputFocused,
+                         onSubmit: submitInlineTask)
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: isEmptyState ? 24 : 8,
+                                      leading: 0,
+                                      bottom: isEmptyState ? 24 : 8,
+                                      trailing: 0))
+    }
+
+    private func encouragementRow(limitState: EncouragementMessage) -> some View {
+        LimitReachedView(limitState: limitState)
+            .padding(.vertical, 24)
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 12, leading: 0, bottom: 12, trailing: 0))
+    }
+
+    private func placeholderText(totalTaskCount: Int) -> String {
+        switch totalTaskCount {
+        case 0:
+            return "让我们从定义第一个专注点开始吧！"
+        case 1:
+            return "很棒！下一个是什么？"
+        case 2:
+            return "最后一个，让今天变得完美！"
+        default:
+            return ""
         }
-        .padding(.trailing, 24)
-        .padding(.bottom, 32)
+    }
+
+    private var canSubmitInlineTask: Bool {
+        !inlineTaskContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && viewModel.canAddTask
+    }
+
+    @ViewBuilder
+    private func listContent(for tasks: [TaskItem]) -> some View {
+        if tasks.isEmpty {
+            if viewModel.canAddTask {
+                inlineAddRow(isEmptyState: true)
+            } else if let limitState = viewModel.limitState {
+                encouragementRow(limitState: limitState)
+            }
+        } else {
+            ForEach(tasks) { task in
+                taskRowView(for: task)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .contentShape(Rectangle())
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button(role: .destructive) {
+                            deleteTask(task)
+                        } label: {
+                            Label("删除", systemImage: "trash")
+                        }
+                        .tint(.red)
+                    }
+            }
+
+            if viewModel.canAddTask {
+                inlineAddRow(isEmptyState: false)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func taskRowView(for task: TaskItem) -> some View {
+        if let editingTask, editingTask.id == task.id {
+            EditingTaskRow(task: task,
+                           isPending: viewModel.isPendingCompletion(task.id),
+                           text: $editingText,
+                           errorMessage: editingErrorMessage,
+                           focusBinding: $focusedTaskID,
+                           onComplete: { completeTask(task) },
+                           onSubmit: {
+                               Task { _ = await commitEditing() }
+                           },
+                           onFocusLost: {
+                               handleFocusLost(for: task.id)
+                           })
+        } else {
+            DisplayTaskRow(task: task,
+                            isPending: viewModel.isPendingCompletion(task.id),
+                            onComplete: { completeTask(task) },
+                            onEdit: { beginEditing(task) })
+        }
     }
 }
 
@@ -363,6 +420,12 @@ private struct EditingTaskRow: View {
         .opacity(isPending ? 0.3 : 1)
         .animation(.easeInOut(duration: 0.25), value: isPending)
         .transition(.opacity.combined(with: .move(edge: .top)))
+        .background(
+            GeometryReader { proxy in
+                Color.clear.preference(key: EditingRowFramePreferenceKey.self,
+                                       value: proxy.frame(in: .named("content-space")))
+            }
+        )
     }
 
     private var completeButton: some View {
@@ -416,6 +479,61 @@ private struct LimitReachedView: View {
     }
 }
 
+private struct InlineAddTaskRow: View {
+    @Binding var text: String
+    let placeholder: String
+    let isEmptyState: Bool
+    let errorMessage: String?
+    let focusBinding: FocusState<Bool>.Binding
+    let onSubmit: () -> Void
+    @Environment(\.themePalette) private var theme
+
+    var body: some View {
+        return VStack(alignment: .leading, spacing: 10) {
+            TextField(placeholder,
+                      text: $text,
+                      onCommit: onSubmit)
+                .font(.system(size: isEmptyState ? 20 : 18,
+                              weight: isEmptyState ? .semibold : .regular))
+                .foregroundColor(theme.textPrimary)
+                .submitLabel(.done)
+                .focused(focusBinding)
+                .onChange(of: text) { _, newValue in
+                    if newValue.count > TaskContentPolicy.maxLength {
+                        text = String(newValue.prefix(TaskContentPolicy.maxLength))
+                    }
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 18)
+                .background(theme.surfaceElevated)
+                .cornerRadius(20)
+                .background(
+                    GeometryReader { proxy in
+                        Color.clear.preference(key: InlineInputFramePreferenceKey.self,
+                                               value: proxy.frame(in: .named("content-space")))
+                    }
+                )
+                .contentShape(Rectangle())
+
+            if isEmptyState {
+                Text("建议：任务保持在20字以内，以便锁屏显示。")
+                    .font(.footnote)
+                    .foregroundColor(theme.textSecondary)
+                    .padding(.leading, 18)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if let errorMessage, !errorMessage.isEmpty {
+                Text(errorMessage)
+                    .font(.footnote)
+                    .foregroundColor(.red.opacity(0.85))
+                    .padding(.leading, 18)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+}
+
 
 private extension ContentView {
     func awaitRefreshAfterAdding(task: TaskItem) {
@@ -431,6 +549,61 @@ private extension ContentView {
         }
     }
 
+    func submitInlineTask() {
+        let trimmed = inlineTaskContent.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            inlineErrorMessage = "请输入任务内容"
+            isInlineInputFocused = true
+            return
+        }
+
+        Task {
+            do {
+                let task = try viewModel.addTask(content: trimmed)
+                awaitRefreshAfterAdding(task: task)
+                await MainActor.run {
+                    inlineTaskContent = ""
+                    inlineErrorMessage = nil
+                    isInlineInputFocused = true
+                }
+            } catch TaskInputError.limitReached {
+                await MainActor.run {
+                    inlineErrorMessage = "今天的三项任务已满，暂无法再添加"
+                    isInlineInputFocused = false
+                }
+            } catch TaskInputError.emptyContent {
+                await MainActor.run {
+                    inlineErrorMessage = "请输入任务内容"
+                    isInlineInputFocused = true
+                }
+            } catch {
+                await MainActor.run {
+                    inlineErrorMessage = "发生未知错误，请稍后再试"
+                }
+            }
+        }
+    }
+
+    func handleInlineFocusLost() {
+        guard inlineErrorMessage == nil else { return }
+        let trimmed = inlineTaskContent.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        submitInlineTask()
+    }
+
+    func handleGlobalTap(at point: CGPoint) {
+        if isInlineInputFocused,
+           inlineInputFrame.isValid,
+           !inlineInputFrame.contains(point) {
+            isInlineInputFocused = false
+        }
+        if editingTask != nil,
+           editingRowFrame.isValid,
+           !editingRowFrame.contains(point) {
+            focusedTaskID = nil
+        }
+    }
+
     func handlePendingOnboardingPrefill(force: Bool = false) {
         let trimmed = pendingOnboardingTask.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -440,10 +613,14 @@ private extension ContentView {
             return
         }
 
-        guard force || !isPresentingAddTask else { return }
+        if !force && !inlineTaskContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return
+        }
 
-        addTaskViewModel.content = String(trimmed.prefix(AddTaskViewModel.maxLength))
-        isPresentingAddTask = true
+        inlineTaskContent = String(trimmed.prefix(TaskContentPolicy.maxLength))
+        inlineErrorMessage = nil
+        pendingOnboardingTask = ""
+        isInlineInputFocused = true
     }
 
     func completeTask(_ task: TaskItem) {
@@ -459,6 +636,22 @@ private extension ContentView {
                     await calendarViewModel.refresh()
                     await evaluateBonsaiGrowth()
                 }
+            }
+        }
+    }
+
+    func deleteTask(_ task: TaskItem) {
+        Task {
+            do {
+                if let editingTask, editingTask.id == task.id {
+                    await MainActor.run { endEditing() }
+                }
+                try await viewModel.delete(task: task)
+                WidgetCenter.shared.reloadAllTimelines()
+                await focusCalendarViewModel.refresh()
+                await evaluateBonsaiGrowth()
+            } catch {
+                assertionFailure("Failed to delete task: \(error)")
             }
         }
     }
@@ -572,7 +765,8 @@ private extension ContentView {
         Task {
             do {
                 try await viewModel.resetTodayTasks()
-                addTaskViewModel.content = ""
+                inlineTaskContent = ""
+                inlineErrorMessage = nil
                 await focusCalendarViewModel.refresh()
                 await evaluateBonsaiGrowth()
             } catch {
@@ -604,4 +798,31 @@ private extension ContentView {
     }
 
     private static let bonsaiReviewThresholds: [Int] = [3, 8, 16, 31, 51]
+}
+
+private struct InlineInputFramePreferenceKey: PreferenceKey {
+    static var defaultValue: CGRect = .zero
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        let candidate = nextValue()
+        if candidate.isValid {
+            value = candidate
+        }
+    }
+}
+
+private struct EditingRowFramePreferenceKey: PreferenceKey {
+    static var defaultValue: CGRect = .zero
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        let candidate = nextValue()
+        if candidate.isValid {
+            value = candidate
+        }
+    }
+}
+
+private extension CGRect {
+    var isValid: Bool {
+        !(origin.x.isNaN || origin.y.isNaN || size.width.isNaN || size.height.isNaN)
+            && size.width.isFinite && size.height.isFinite && size.width >= 0 && size.height >= 0
+    }
 }

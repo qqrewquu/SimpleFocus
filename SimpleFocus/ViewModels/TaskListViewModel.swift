@@ -20,6 +20,16 @@ final class TaskListViewModel: ObservableObject {
     @Published private(set) var canAddTask: Bool = true
     @Published private(set) var limitState: EncouragementMessage?
     @Published private(set) var pendingCompletionTaskIDs: Set<UUID> = []
+    @Published private(set) var totalTasksToday: Int = 0
+
+    private enum CompletionSource {
+        case unknown
+        case taskCompleted
+        case taskDeleted
+        case reset
+    }
+
+    private var lastCompletionSource: CompletionSource = .unknown
 
 
     var hasTasks: Bool {
@@ -103,6 +113,7 @@ final class TaskListViewModel: ObservableObject {
             }
 
             try store.markTaskCompleted(task)
+            lastCompletionSource = .taskCompleted
             pendingCompletionTaskIDs.remove(taskID)
             pendingCompletionTasks.removeValue(forKey: taskID)
             let handler = pendingCompletionHandlers.removeValue(forKey: taskID)
@@ -156,6 +167,8 @@ final class TaskListViewModel: ObservableObject {
 
 
     func refresh(referenceDate: Date = Date(), animate: Bool = false) async throws {
+        defer { lastCompletionSource = .unknown }
+
         let dayAnchor = calendar.startOfDay(for: referenceDate)
         let staleCount = try store.staleIncompleteTaskCount(before: dayAnchor)
         let movedToNewDay = currentDayAnchor.map { dayAnchor > $0 } ?? false
@@ -185,7 +198,10 @@ final class TaskListViewModel: ObservableObject {
             tasks = fetched
         }
 
-        if previousCount > 0 && fetched.isEmpty {
+        let todaysTasks = try await store.fetchTasksForToday(referenceDate: referenceDate)
+        totalTasksToday = todaysTasks.count
+
+        if previousCount > 0 && fetched.isEmpty && lastCompletionSource == .taskCompleted {
             celebration = celebrationProvider.nextCelebration()
             AppState.attemptReviewRequest(source: "completed_first_day_tasks")
         }
@@ -196,7 +212,6 @@ final class TaskListViewModel: ObservableObject {
 
         if let controller = liveActivityController {
             do {
-                let todaysTasks = try await store.fetchTasksForToday(referenceDate: referenceDate)
                 #if DEBUG
                 print("[LiveActivity] refreshing with tasks:", todaysTasks.map(\.content))
                 #endif
@@ -237,6 +252,12 @@ final class TaskListViewModel: ObservableObject {
         try await refresh(referenceDate: referenceDate)
     }
 
+    func delete(task: TaskItem, referenceDate: Date = Date()) async throws {
+        try store.deleteTask(task)
+        lastCompletionSource = .taskDeleted
+        try await refresh(referenceDate: referenceDate)
+    }
+
     func clearCompletionAnimation(for taskID: UUID) {
         recentlyCompletedTaskIDs.remove(taskID)
     }
@@ -252,6 +273,7 @@ final class TaskListViewModel: ObservableObject {
         celebration = nil
         limitState = nil
         currentDayAnchor = calendar.startOfDay(for: referenceDate)
+        lastCompletionSource = .reset
         try await refresh(referenceDate: referenceDate, animate: true)
     }
 
@@ -264,6 +286,17 @@ final class TaskListViewModel: ObservableObject {
         let limitReached = try store.isDailyLimitReached(referenceDate: referenceDate)
         canAddTask = !limitReached
         limitState = limitReached ? encouragementProvider.nextMessage() : nil
+    }
+
+    @discardableResult
+    func addTask(content rawContent: String,
+                 referenceDate: Date = Date()) throws -> TaskItem {
+        let normalized = try normalizeContent(from: rawContent)
+        if try store.isDailyLimitReached(referenceDate: referenceDate) {
+            throw TaskInputError.limitReached
+        }
+        let task = try store.createTask(with: normalized)
+        return task
     }
 
     private func normalizeContent(from raw: String) throws -> String {

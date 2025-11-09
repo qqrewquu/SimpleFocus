@@ -62,7 +62,7 @@ final class SimpleFocusLiveActivityManager: LiveActivityManaging {
         guard let activity else { return }
         let dismissal: ActivityUIDismissalPolicy
         switch reason {
-        case .completedAllTasks, .manualReset, .dateRolledOver:
+        case .completedAllTasks, .manualReset, .dateRolledOver: 
             dismissal = .immediate
         }
         await activity.end(dismissalPolicy: dismissal)

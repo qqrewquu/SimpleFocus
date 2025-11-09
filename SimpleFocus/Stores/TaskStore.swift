@@ -42,6 +42,11 @@ final class TaskStore {
         try save(task: task)
     }
 
+    func deleteTask(_ task: TaskItem) throws {
+        modelContext.delete(task)
+        try modelContext.save()
+    }
+
     func clearTodayTasks(referenceDate: Date = Date()) throws {
         let startOfDay = calendar.startOfDay(for: referenceDate)
         guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else {
