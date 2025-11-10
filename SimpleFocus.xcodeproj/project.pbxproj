@@ -64,6 +64,7 @@
 		FD22C4D22EA4121200E88B83 /* Exceptions for "SimpleFocus" folder in "SimpleFocusWidgetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Models/Bonsai.swift,
 				Models/TaskItem.swift,
 				Policies/AppGroup.swift,
 				Policies/CloudSyncConfig.swift,

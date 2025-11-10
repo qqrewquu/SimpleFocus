@@ -182,6 +182,7 @@ final class TaskStore {
 extension TaskStore {
     private static let sharedLogger = Logger(subsystem: "com.zifengguo.SimpleFocus", category: "TaskStore")
 
+    @MainActor
     static func makeSharedStore() throws -> TaskStore {
         let defaults = UserDefaults.appGroup
         let mode = PersistenceController.activeMode(using: defaults)

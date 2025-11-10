@@ -3,6 +3,7 @@ import SwiftData
 import SwiftUI
 
 @main
+@MainActor
 struct SimpleFocusApp: App {
     private let container: ModelContainer
     private let store: TaskStore

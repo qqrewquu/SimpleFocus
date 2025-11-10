@@ -15,8 +15,10 @@ enum DataStorageMode: String {
 
 enum PersistenceError: Error {
     case missingAppGroupContainer
+    case cloudSyncUnavailable
 }
 
+@MainActor
 enum PersistenceController {
     static func desiredMode(using defaults: UserDefaults = .appGroup) -> DataStorageMode {
         if defaults.object(forKey: SettingsStorageKeys.cloudSyncEnabled) == nil {
@@ -60,7 +62,11 @@ enum PersistenceController {
             }
             configuration = ModelConfiguration(url: sharedURL)
         case .cloud:
+#if swift(>=6.0)
             configuration = ModelConfiguration(cloudKitContainerIdentifier: CloudSyncConfig.containerIdentifier)
+#else
+            throw PersistenceError.cloudSyncUnavailable
+#endif
         }
         return try ModelContainer(for: TaskItem.self, Bonsai.self, configurations: configuration)
     }
