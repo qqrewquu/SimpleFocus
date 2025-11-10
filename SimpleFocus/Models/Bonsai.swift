@@ -10,8 +10,8 @@ import SwiftData
 
 @Model
 final class Bonsai {
-    var creationDate: Date
-    var growthPoints: Int
+    var creationDate: Date = Date()
+    var growthPoints: Int = 0
     var lastGrowthDate: Date?
 
     init(creationDate: Date = .now,

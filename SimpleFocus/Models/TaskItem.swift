@@ -10,10 +10,10 @@ import SwiftData
 
 @Model
 final class TaskItem: Identifiable {
-    @Attribute(.unique) var id: UUID
-    var content: String
-    var creationDate: Date
-    var isCompleted: Bool
+    var id: UUID = UUID()
+    var content: String = ""
+    var creationDate: Date = Date()
+    var isCompleted: Bool = false
 
     init(id: UUID = UUID(),
          content: String,
