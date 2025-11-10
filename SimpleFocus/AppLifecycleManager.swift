@@ -5,6 +5,7 @@
 //  Created by Codex on 2025-11-09.
 //
 
+import Combine
 import OSLog
 import SwiftData
 import SwiftUI
