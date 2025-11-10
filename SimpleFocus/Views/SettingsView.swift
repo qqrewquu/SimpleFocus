@@ -20,6 +20,8 @@ struct SettingsView: View {
     @EnvironmentObject private var languageManager: LanguageManager
     @State private var mailAlert: MailAlert?
     @State private var showingMailComposer = false
+    @AppStorage(SettingsStorageKeys.cloudSyncEnabled, store: UserDefaults.appGroup) private var isCloudSyncEnabled: Bool = true
+    @State private var showCloudSyncRestartAlert = false
 
     private let appStoreReviewURL = URL(string: "https://apps.apple.com/app/id0000000000?action=write-review")
     private let shareURL = URL(string: "https://apps.apple.com/app/id0000000000")
@@ -80,6 +82,12 @@ struct SettingsView: View {
         .sheet(isPresented: $showingMailComposer) {
             mailComposerSheet
         }
+        .alert(isPresented: $showCloudSyncRestartAlert) {
+            let strings = SettingsStrings(languageManager: languageManager)
+            return Alert(title: Text(strings.cloudSyncAlertTitle),
+                         message: Text(strings.cloudSyncAlertMessage),
+                         dismissButton: .default(Text(strings.okay)))
+        }
     }
 
     private var generalSettingsCard: some View {
@@ -102,6 +110,8 @@ struct SettingsView: View {
                             value: languageManager.localized(viewModel.isReminderEnabled ? "已开启" : "未开启"))
             }
             .buttonStyle(.plain)
+            cardDivider
+            cloudSyncRow
             cardDivider
             liveActivityRow
         }
@@ -167,6 +177,27 @@ struct SettingsView: View {
             .labelsHidden()
             .frame(maxWidth: 180)
             .tint(theme.primary)
+        }
+    }
+
+    private var cloudSyncRow: some View {
+        let strings = SettingsStrings(languageManager: languageManager)
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 12) {
+                Text("☁️")
+                    .font(.title3)
+                Text(strings.cloudSyncTitle)
+                    .font(.body)
+                    .foregroundColor(theme.textPrimary)
+                Spacer()
+                Toggle("", isOn: Binding(get: { isCloudSyncEnabled },
+                                         set: { handleCloudSyncToggle($0) }))
+                    .labelsHidden()
+                    .tint(theme.primary)
+            }
+            Text(strings.cloudSyncFootnote)
+                .font(.footnote)
+                .foregroundColor(theme.textSecondary)
         }
     }
 
@@ -237,6 +268,11 @@ struct SettingsView: View {
                 mailAlert = .mailUnavailable
             }
         }
+    }
+
+    private func handleCloudSyncToggle(_ isOn: Bool) {
+        isCloudSyncEnabled = isOn
+        showCloudSyncRestartAlert = true
     }
 }
 
@@ -327,6 +363,10 @@ private struct SettingsStrings {
     var rateTitle: String { languageManager.localized("给个 5 星好评") }
     var shareTitle: String { languageManager.localized("把 SimpleFocus 推荐给好友") }
     var feedbackTitle: String { languageManager.localized("给我发送邮件提建议哦") }
+    var cloudSyncTitle: String { languageManager.localized("iCloud 数据同步") }
+    var cloudSyncFootnote: String { languageManager.localized("切换后需要重新启动 App 完成数据迁移。") }
+    var cloudSyncAlertTitle: String { languageManager.localized("需要重新启动") }
+    var cloudSyncAlertMessage: String { languageManager.localized("请重新启动 SimpleFocus 以应用新的同步设置，您的数据会自动迁移。") }
     var appearanceTitle: String { languageManager.localized("外观") }
     var liveActivityTitle: String { languageManager.localized("实时活动") }
     var openSystemSettings: String { languageManager.localized("前往设置") }

@@ -138,6 +138,10 @@
 "繁茂期" = "Flourishing Stage";
 "给个 5 星好评" = "Leave a 5-star review";
 "给我发送邮件提建议哦" = "Send me feedback via email";
+"iCloud 数据同步" = "iCloud Sync";
+"切换后需要重新启动 App 完成数据迁移。" = "Restart the app after switching to finish migrating your data.";
+"需要重新启动" = "Restart Required";
+"请重新启动 SimpleFocus 以应用新的同步设置，您的数据会自动迁移。" = "Restart SimpleFocus to apply the new sync setting. Your data will migrate automatically.";
 "给自己一点掌声，明天继续保持节奏。" = "Give yourself some applause and keep the rhythm tomorrow.";
 "继续" = "Continue";
 "继续保持专注" = "Keep staying focused";

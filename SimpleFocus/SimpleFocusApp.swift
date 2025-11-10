@@ -1,3 +1,4 @@
+import OSLog
 import SwiftData
 import SwiftUI
 
@@ -10,37 +11,24 @@ struct SimpleFocusApp: App {
     @AppStorage("pendingOnboardingTask") private var pendingOnboardingTask: String = ""
     @StateObject private var themeManager = ThemeManager()
     @StateObject private var languageManager = LanguageManager()
+    @AppStorage(SettingsStorageKeys.cloudSyncEnabled, store: UserDefaults.appGroup) private var isCloudSyncEnabled: Bool = true
+    private let persistenceLogger = Logger(subsystem: "com.zifengguo.SimpleFocus", category: "Persistence")
 
     init() {
+        let defaults = UserDefaults.appGroup
         do {
-            if let containerURL = AppGroup.containerURL() {
-                print("[SimpleFocus] App Group container: \(containerURL.path(percentEncoded: false))")
-                do {
-                    let contents = try FileManager.default.contentsOfDirectory(at: containerURL,
-                                                                               includingPropertiesForKeys: nil,
-                                                                               options: [.skipsHiddenFiles])
-                    if contents.isEmpty {
-                        print("[SimpleFocus] App Group container is empty.")
-                    } else {
-                        for item in contents {
-                            print("[SimpleFocus] App Group item: \(item.lastPathComponent)")
-                        }
-                    }
-                } catch {
-                    print("[SimpleFocus] Failed to list App Group contents: \(error)")
-                }
-            } else {
-                print("[SimpleFocus] App Group container unavailable.")
-            }
-
-            guard let sharedURL = AppGroup.containerURL()?.appending(path: "SimpleFocus.sqlite",
-                                                                     directoryHint: .notDirectory) else {
-                fatalError("Unable to locate shared App Group container file.")
-            }
-            let configuration = ModelConfiguration(url: sharedURL)
-            container = try ModelContainer(for: TaskItem.self, Bonsai.self, configurations: configuration)
+            try PersistenceController.migrateIfNeeded(defaults: defaults)
+            let mode = PersistenceController.desiredMode(using: defaults)
+            container = try PersistenceController.makeContainer(for: mode)
         } catch {
-            fatalError("Failed to create model container: \(error)")
+            persistenceLogger.error("Failed to prepare persistence; falling back to local store. Error: \(error.localizedDescription, privacy: .public)")
+            defaults.set(false, forKey: SettingsStorageKeys.cloudSyncEnabled)
+            PersistenceController.setActiveMode(.local, defaults: defaults)
+            do {
+                container = try PersistenceController.makeContainer(for: .local)
+            } catch {
+                fatalError("Failed to establish fallback local store: \(error)")
+            }
         }
         store = TaskStore(modelContext: container.mainContext)
 

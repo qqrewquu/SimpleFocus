@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import OSLog
 import SwiftData
 
 enum TaskUpdateError: Error, Equatable {
@@ -179,18 +180,21 @@ final class TaskStore {
 }
 
 extension TaskStore {
+    private static let sharedLogger = Logger(subsystem: "com.zifengguo.SimpleFocus", category: "TaskStore")
+
     static func makeSharedStore() throws -> TaskStore {
-        guard let containerURL = AppGroup.containerURL() else {
-            throw NSError(domain: "TaskStore",
-                          code: -1,
-                          userInfo: [NSLocalizedDescriptionKey: "Unable to locate shared App Group container."])
+        let defaults = UserDefaults.appGroup
+        let mode = PersistenceController.activeMode(using: defaults)
+        do {
+            let container = try PersistenceController.makeContainer(for: mode)
+            return TaskStore(modelContext: container.mainContext)
+        } catch {
+            guard mode == .cloud else { throw error }
+            sharedLogger.error("Falling back to local store for widget due to error: \(error.localizedDescription, privacy: .public)")
+            defaults.set(false, forKey: SettingsStorageKeys.cloudSyncEnabled)
+            PersistenceController.setActiveMode(.local, defaults: defaults)
+            let container = try PersistenceController.makeContainer(for: .local)
+            return TaskStore(modelContext: container.mainContext)
         }
-
-        let sharedURL = containerURL.appending(path: "SimpleFocus.sqlite", directoryHint: .notDirectory)
-        print("[SimpleFocus] Using shared store at \(sharedURL.path(percentEncoded: false))")
-
-        let configuration = ModelConfiguration(url: sharedURL)
-        let container = try ModelContainer(for: TaskItem.self, configurations: configuration)
-        return TaskStore(modelContext: container.mainContext)
     }
 }

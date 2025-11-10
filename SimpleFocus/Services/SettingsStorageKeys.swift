@@ -10,4 +10,6 @@ import Foundation
 enum SettingsStorageKeys {
     static let liveActivityEnabled = "settings.liveActivity.enabled"
     static let languageSelection = "settings.language.selection"
+    static let cloudSyncEnabled = "settings.cloudSync.enabled"
+    static let activeStorageMode = "settings.cloudSync.activeMode"
 }
