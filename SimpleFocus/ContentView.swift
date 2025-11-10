@@ -8,6 +8,7 @@ struct ContentView: View {
     @ObservedObject private var bonsaiController: BonsaiController
     private let store: TaskStore
     @Environment(\.themePalette) private var theme
+    @EnvironmentObject private var languageManager: LanguageManager
 
     @AppStorage("hasNewBonsaiGrowth") private var hasNewBonsaiGrowth: Bool = false
     @AppStorage("pendingOnboardingTask") private var pendingOnboardingTask: String = ""
@@ -102,21 +103,21 @@ struct ContentView: View {
             }
         }
 #if DEBUG
-        .alert("清空今天的任务？", isPresented: $isShowingResetAlert) {
-            Button("取消", role: .cancel) {}
-            Button("清空", role: .destructive) {
+        .alert(languageManager.localized("清空今天的任务？"), isPresented: $isShowingResetAlert) {
+            Button(languageManager.localized("取消"), role: .cancel) {}
+            Button(languageManager.localized("清空"), role: .destructive) {
                 resetTodayTasksForDebug()
             }
         } message: {
-            Text("该操作仅用于调试，将删除今天的所有任务。")
+            Text(languageManager.localized("该操作仅用于调试，将删除今天的所有任务。"))
         }
-        .alert("重置 Onboarding 流程？", isPresented: $isShowingOnboardingResetAlert) {
-            Button("取消", role: .cancel) {}
-            Button("重置", role: .destructive) {
+        .alert(languageManager.localized("重置 Onboarding 流程？"), isPresented: $isShowingOnboardingResetAlert) {
+            Button(languageManager.localized("取消"), role: .cancel) {}
+            Button(languageManager.localized("重置"), role: .destructive) {
                 resetOnboardingForDebug()
             }
         } message: {
-            Text("此操作会清除引导完成状态。重启应用后将重新进入 Onboarding。")
+            Text(languageManager.localized("此操作会清除引导完成状态。重启应用后将重新进入 Onboarding。"))
         }
 #endif
         .sheet(item: Binding(
@@ -150,7 +151,7 @@ struct ContentView: View {
 #endif
                 Spacer()
                 if editingTask != nil {
-                    Button("完成") {
+                    Button(languageManager.localized("完成")) {
                         Task {
                             _ = await commitEditing()
                         }
@@ -158,7 +159,7 @@ struct ContentView: View {
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(theme.primary)
                 } else if canSubmitInlineTask {
-                    Button("完成") {
+                    Button(languageManager.localized("完成")) {
                         submitInlineTask()
                     }
                     .font(.system(size: 17, weight: .semibold))
@@ -176,13 +177,13 @@ struct ContentView: View {
             Button(role: .destructive) {
                 isShowingResetAlert = true
             } label: {
-                Label("清空今天的任务", systemImage: "trash")
+                Label(languageManager.localized("清空今天的任务"), systemImage: "trash")
             }
 
             Button {
                 isShowingOnboardingResetAlert = true
             } label: {
-                Label("重置 Onboarding", systemImage: "arrow.counterclockwise")
+                Label(languageManager.localized("重置 Onboarding"), systemImage: "arrow.counterclockwise")
             }
         } label: {
             Image(systemName: "ellipsis.circle")
@@ -236,11 +237,11 @@ struct ContentView: View {
     private func placeholderText(totalTaskCount: Int) -> String {
         switch totalTaskCount {
         case 0:
-            return "让我们从定义第一个专注点开始吧！"
+            return languageManager.localized("让我们从定义第一个专注点开始吧！")
         case 1:
-            return "很棒！下一个是什么？"
+            return languageManager.localized("很棒！下一个是什么？")
         case 2:
-            return "最后一个，让今天变得完美！"
+            return languageManager.localized("最后一个，让今天变得完美！")
         default:
             return ""
         }
@@ -552,7 +553,7 @@ private extension ContentView {
     func submitInlineTask() {
         let trimmed = inlineTaskContent.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            inlineErrorMessage = "请输入任务内容"
+            inlineErrorMessage = languageManager.localized("请输入任务内容")
             isInlineInputFocused = true
             return
         }
@@ -568,17 +569,17 @@ private extension ContentView {
                 }
             } catch TaskInputError.limitReached {
                 await MainActor.run {
-                    inlineErrorMessage = "今天的三项任务已满，暂无法再添加"
+                    inlineErrorMessage = languageManager.localized("今天的三项任务已满，暂无法再添加")
                     isInlineInputFocused = false
                 }
             } catch TaskInputError.emptyContent {
                 await MainActor.run {
-                    inlineErrorMessage = "请输入任务内容"
+                    inlineErrorMessage = languageManager.localized("请输入任务内容")
                     isInlineInputFocused = true
                 }
             } catch {
                 await MainActor.run {
-                    inlineErrorMessage = "发生未知错误，请稍后再试"
+                    inlineErrorMessage = languageManager.localized("发生未知错误，请稍后再试")
                 }
             }
         }
@@ -710,7 +711,7 @@ private extension ContentView {
 
         let trimmed = editingText.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
-            editingErrorMessage = "请输入任务内容"
+            editingErrorMessage = languageManager.localized("请输入任务内容")
             focusedTaskID = task.id
             print("[InlineEdit] commit aborted: empty content")
             return false
@@ -732,17 +733,17 @@ private extension ContentView {
             print("[InlineEdit] commit success: updated to \(normalized)")
             return true
         } catch TaskInputError.emptyContent {
-            editingErrorMessage = "请输入任务内容"
+            editingErrorMessage = languageManager.localized("请输入任务内容")
             focusedTaskID = task.id
             print("[InlineEdit] commit failed: empty content error thrown")
             return false
         } catch TaskUpdateError.completedTask {
-            editingErrorMessage = "已完成的任务无法编辑"
+            editingErrorMessage = languageManager.localized("已完成的任务无法编辑")
             focusedTaskID = task.id
             print("[InlineEdit] commit failed: completed task error")
             return false
         } catch {
-            editingErrorMessage = "保存失败，请重试"
+            editingErrorMessage = languageManager.localized("保存失败，请重试")
             focusedTaskID = task.id
             print("[InlineEdit] commit failed: \(error)")
             return false

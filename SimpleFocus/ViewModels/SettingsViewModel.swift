@@ -23,14 +23,14 @@ final class SettingsViewModel: ObservableObject {
         var title: String {
             switch self {
             case .notificationsDenied:
-                return "通知权限未开启"
+                return LanguageManager.sharedLocalized("通知权限未开启")
             }
         }
 
         var message: String {
             switch self {
             case .notificationsDenied:
-                return "要启用每日提醒，请在系统设置中允许 SimpleFocus 发送通知。"
+                return LanguageManager.sharedLocalized("要启用每日提醒，请在系统设置中允许 SimpleFocus 发送通知。")
             }
         }
     }
@@ -42,22 +42,30 @@ final class SettingsViewModel: ObservableObject {
 
     @Published var isReminderEnabled: Bool
     @Published var reminderTime: Date
+    @Published var isLiveActivityEnabled: Bool
     @Published var alertContext: AlertContext?
 
     private let scheduler: ReminderNotificationScheduling
     private let defaults: UserDefaults
     private let calendar: Calendar
+    private let liveActivityController: LiveActivityLifecycleController?
 
     init(scheduler: ReminderNotificationScheduling,
+         liveActivityController: LiveActivityLifecycleController? = nil,
          defaults: UserDefaults = .standard,
          calendar: Calendar = .current) {
         self.scheduler = scheduler
         self.defaults = defaults
         self.calendar = calendar
+        self.liveActivityController = liveActivityController
 
         let storedEnabled = defaults.bool(forKey: StorageKeys.reminderEnabled)
         let storedDate = defaults.object(forKey: StorageKeys.reminderTime) as? Date
         let normalizedDefault = SettingsViewModel.defaultReminderTime(using: calendar)
+        if defaults.object(forKey: SettingsStorageKeys.liveActivityEnabled) == nil {
+            defaults.set(true, forKey: SettingsStorageKeys.liveActivityEnabled)
+        }
+        self.isLiveActivityEnabled = defaults.object(forKey: SettingsStorageKeys.liveActivityEnabled) as? Bool ?? true
 
         self.isReminderEnabled = storedEnabled
         self.reminderTime = SettingsViewModel.normalize(storedDate ?? normalizedDefault, calendar: calendar)
@@ -95,18 +103,26 @@ final class SettingsViewModel: ObservableObject {
         }
     }
 
-    var reminderSummaryText: String {
-        let formatter = DateFormatter()
-        formatter.calendar = calendar
-        formatter.locale = Locale.current
-        formatter.timeStyle = .short
-        return "将在每日 \(formatter.string(from: reminderTime)) 提醒你添加任务。"
+    var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "–"
     }
 
-    var versionDisplayText: String {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "–"
-        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "–"
-        return "版本号 \(version) (Build \(build))"
+    var buildNumber: String {
+        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "–"
+    }
+
+    func setLiveActivityEnabled(_ isOn: Bool) {
+        guard isLiveActivityEnabled != isOn else { return }
+        isLiveActivityEnabled = isOn
+        defaults.set(isOn, forKey: SettingsStorageKeys.liveActivityEnabled)
+
+        if isOn {
+            NotificationCenter.default.post(name: .liveActivityPreferenceEnabled, object: nil)
+        } else if let controller = liveActivityController, controller.isActivityRunning {
+            Task {
+                try? await controller.endActivity(reason: .manualReset)
+            }
+        }
     }
 
     private func handleEnableReminder() async {

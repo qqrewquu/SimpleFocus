@@ -45,19 +45,34 @@ final class TaskListViewModel: ObservableObject {
     private var pendingCompletionTasks: [UUID: Task<Void, Never>] = [:]
     private var pendingCompletionHandlers: [UUID: () -> Void] = [:]
     private let completionDelay: TimeInterval
+    private let defaults: UserDefaults
+    private var cancellables: Set<AnyCancellable> = []
 
     init(store: TaskStore,
          celebrationProvider: CelebrationProviding? = nil,
          encouragementProvider: EncouragementProviding? = nil,
          completionDelay: TimeInterval = 1.5,
          calendar: Calendar = .current,
-         liveActivityController: LiveActivityLifecycleController? = nil) {
+         liveActivityController: LiveActivityLifecycleController? = nil,
+         defaults: UserDefaults = .standard) {
         self.store = store
         self.celebrationProvider = celebrationProvider ?? CelebrationProvider()
         self.encouragementProvider = encouragementProvider ?? EncouragementProvider()
         self.completionDelay = completionDelay
         self.calendar = calendar
         self.liveActivityController = liveActivityController
+        self.defaults = defaults
+
+        NotificationCenter.default.publisher(for: .liveActivityPreferenceEnabled)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                Task { [weak self] in
+                    guard let self else { return }
+                    try? await self.refresh(referenceDate: Date())
+                }
+            }
+            .store(in: &cancellables)
     }
 
     func setLiveActivityController(_ controller: LiveActivityLifecycleController) {
@@ -211,6 +226,8 @@ final class TaskListViewModel: ObservableObject {
         try updateAddAvailability(referenceDate: referenceDate)
 
         if let controller = liveActivityController {
+            let featureEnabled = isLiveActivityFeatureEnabled()
+            if featureEnabled {
             do {
                 #if DEBUG
                 print("[LiveActivity] refreshing with tasks:", todaysTasks.map(\.content))
@@ -242,6 +259,15 @@ final class TaskListViewModel: ObservableObject {
                     }
                 }
                 #endif
+            }
+            } else if controller.isActivityRunning {
+                do {
+                    try await controller.endActivity(reason: .manualReset)
+                } catch {
+                    #if DEBUG
+                    print("[LiveActivity] Failed to end while disabled: \(error)")
+                    #endif
+                }
             }
         }
     }
@@ -305,5 +331,12 @@ final class TaskListViewModel: ObservableObject {
             throw TaskInputError.emptyContent
         }
         return String(trimmed.prefix(TaskContentPolicy.maxLength))
+    }
+
+    private func isLiveActivityFeatureEnabled() -> Bool {
+        guard defaults.object(forKey: SettingsStorageKeys.liveActivityEnabled) != nil else {
+            return true
+        }
+        return defaults.bool(forKey: SettingsStorageKeys.liveActivityEnabled)
     }
 }

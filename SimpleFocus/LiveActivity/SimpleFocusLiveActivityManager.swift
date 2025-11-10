@@ -65,7 +65,7 @@ final class SimpleFocusLiveActivityManager: LiveActivityManaging {
         case .completedAllTasks, .manualReset, .dateRolledOver: 
             dismissal = .immediate
         }
-        await activity.end(dismissalPolicy: dismissal)
+        await activity.end(nil, dismissalPolicy: dismissal)
         self.activity = nil
     }
 }

@@ -9,6 +9,7 @@ struct SimpleFocusApp: App {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     @AppStorage("pendingOnboardingTask") private var pendingOnboardingTask: String = ""
     @StateObject private var themeManager = ThemeManager()
+    @StateObject private var languageManager = LanguageManager()
 
     init() {
         do {
@@ -80,7 +81,9 @@ struct SimpleFocusApp: App {
                 }
             }
             .environmentObject(themeManager)
+            .environmentObject(languageManager)
             .environment(\.themePalette, themeManager.palette)
+            .environment(\.locale, languageManager.locale)
             .preferredColorScheme(themeManager.mode == .dark ? .dark : .light)
         }
     }

@@ -15,12 +15,12 @@ enum AppThemeMode: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var displayName: String {
+    func localizedTitle(using languageManager: LanguageManager) -> String {
         switch self {
         case .dark:
-            return "夜间"
+            return languageManager.localized("夜间")
         case .light:
-            return "日间"
+            return languageManager.localized("日间")
         }
     }
 }

@@ -11,12 +11,19 @@ import UIKit
 
 enum ReviewService {
     static func requestReview() {
-        DispatchQueue.main.async {
-            guard let scene = UIApplication.shared.connectedScenes
-                .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene else {
-                return
+        guard let scene = UIApplication.shared.connectedScenes
+            .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene else {
+            return
+        }
+
+        if #available(iOS 18.0, *) {
+            Task { @MainActor in
+                try? await AppStore.requestReview(in: scene)
             }
-            SKStoreReviewController.requestReview(in: scene)
+        } else {
+            DispatchQueue.main.async {
+                SKStoreReviewController.requestReview(in: scene)
+            }
         }
     }
 }

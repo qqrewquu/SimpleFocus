@@ -29,7 +29,9 @@ protocol CelebrationProviding {
 }
 
 struct CelebrationProvider: CelebrationProviding {
-    private static let title = "恭喜完成全部任务！"
+    private var title: String {
+        LocalizationHelper.text("恭喜完成全部任务！")
+    }
 
     private let quotes: [CelebrationQuote] = [
         CelebrationQuote(text: "Stay hungry, stay foolish.", author: "Steve Jobs"),
@@ -41,6 +43,36 @@ struct CelebrationProvider: CelebrationProviding {
 
     func nextCelebration() -> CompletionCelebration {
         let selected = quotes.randomElement() ?? quotes[0]
-        return CompletionCelebration(title: Self.title, quote: selected)
+        return CompletionCelebration(title: title, quote: selected)
     }
+}
+
+private enum LocalizationHelper {
+    static func text(_ key: String) -> String {
+        bundle.localizedString(forKey: key, value: nil, table: nil)
+    }
+
+    private static var bundle: Bundle {
+        let defaults = UserDefaults.standard
+        guard let selection = defaults.string(forKey: languageSelectionKey) else {
+            return .main
+        }
+        let resource: String?
+        switch selection {
+        case "english":
+            resource = "en"
+        case "simplifiedChinese":
+            resource = "zh-Hans"
+        default:
+            resource = nil
+        }
+        if let resource,
+           let path = Bundle.main.path(forResource: resource, ofType: "lproj"),
+           let bundle = Bundle(path: path) {
+            return bundle
+        }
+        return .main
+    }
+
+    private static let languageSelectionKey = "settings.language.selection"
 }

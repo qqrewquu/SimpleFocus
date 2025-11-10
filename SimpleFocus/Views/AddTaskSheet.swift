@@ -15,6 +15,7 @@ struct AddTaskSheet: View {
 
     @State private var errorMessage: String?
     @Environment(\.themePalette) private var theme
+    @EnvironmentObject private var languageManager: LanguageManager
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -24,12 +25,12 @@ struct AddTaskSheet: View {
                 .frame(maxWidth: .infinity)
                 .padding(.top, 8)
 
-            Text("新增专注任务")
+            Text(languageManager.localized("新增专注任务"))
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundColor(theme.textPrimary)
 
             VStack(alignment: .leading, spacing: 8) {
-                TextField("输入任务（最多20字）", text: $viewModel.content)
+                TextField(languageManager.localized("输入任务（最多20字）"), text: $viewModel.content)
                     .textFieldStyle(.plain)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 14)
@@ -38,13 +39,13 @@ struct AddTaskSheet: View {
                     .foregroundColor(theme.textPrimary)
                     .submitLabel(.done)
 
-                Text("建议：任务保持在20字以内，以便锁屏显示。")
+                Text(languageManager.localized("建议：任务保持在20字以内，以便锁屏显示。"))
                     .font(.footnote)
                     .foregroundColor(theme.textSecondary)
 
                 if let limitState {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(limitState.message)
+                    Text(limitState.message)
                             .font(.footnote)
                             .foregroundColor(.red.opacity(0.85))
                         Text(limitState.encouragement)
@@ -69,7 +70,7 @@ struct AddTaskSheet: View {
             }
 
             Button(action: submit) {
-                Text("确认")
+                Text(languageManager.localized("确认"))
                     .font(.system(size: 18, weight: .semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
@@ -96,11 +97,11 @@ struct AddTaskSheet: View {
             errorMessage = nil
             onTaskCreated(task)
         } catch TaskInputError.emptyContent {
-            errorMessage = "请输入任务内容"
+            errorMessage = languageManager.localized("请输入任务内容")
         } catch TaskInputError.limitReached {
-            errorMessage = "今天的三项任务已满，暂无法再添加"
+            errorMessage = languageManager.localized("今天的三项任务已满，暂无法再添加")
         } catch {
-            errorMessage = "发生未知错误，请重试"
+            errorMessage = languageManager.localized("发生未知错误，请重试")
         }
     }
 }
@@ -113,6 +114,7 @@ struct AddTaskSheet: View {
     let viewModel = AddTaskViewModel(store: store)
     return AddTaskSheet(viewModel: viewModel, limitState: nil) { _ in }
         .modelContainer(container)
+        .environmentObject(LanguageManager())
 }
 
 #Preview("Add Task Sheet - Limit Reached") {
@@ -121,8 +123,9 @@ struct AddTaskSheet: View {
     let container = try! ModelContainer(for: schema, configurations: configuration)
     let store = TaskStore(modelContext: container.mainContext)
     let viewModel = AddTaskViewModel(store: store)
-    let limit = EncouragementMessage(message: "今日三件大事已妥善安排。",
-                                     encouragement: "好好休息，为明天充电。")
+    let limit = EncouragementMessage(message: LanguageManager.sharedLocalized("今日三件大事已妥善安排。"),
+                                     encouragement: LanguageManager.sharedLocalized("好好休息，为明天充电。"))
     return AddTaskSheet(viewModel: viewModel, limitState: limit) { _ in }
         .modelContainer(container)
+        .environmentObject(LanguageManager())
 }

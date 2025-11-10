@@ -37,7 +37,8 @@ struct MainTabView: View {
         self.liveActivityController = liveActivityController
         let context = container.mainContext
         _focusCalendarViewModel = StateObject(wrappedValue: FocusCalendarViewModel(store: store))
-        _settingsViewModel = StateObject(wrappedValue: SettingsViewModel(scheduler: ReminderNotificationScheduler()))
+        _settingsViewModel = StateObject(wrappedValue: SettingsViewModel(scheduler: ReminderNotificationScheduler(),
+                                                                         liveActivityController: liveActivityController))
         _bonsaiController = StateObject(wrappedValue: BonsaiController(modelContext: context))
     }
 

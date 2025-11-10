@@ -13,33 +13,35 @@ struct BonsaiView: View {
     @ObservedObject var controller: BonsaiController
     @AppStorage("hasNewBonsaiGrowth") private var hasNewBonsaiGrowth: Bool = false
     @Environment(\.themePalette) private var theme
-
-    private let stages: [BonsaiStage] = [
-        .init(range: 0...2,
-              imageName: "bonsai1",
-              title: "初芽",
-              message: "坚持完成任务，嫩芽将逐渐长高。"),
-        .init(range: 3...7,
-              imageName: "bonsai12",
-              title: "幼苗",
-              message: "幼苗开始舒展枝叶，保持良好势头。"),
-        .init(range: 8...15,
-              imageName: "bonsai13",
-              title: "成长期",
-              message: "枝干更稳固，专注力也更强大。"),
-        .init(range: 16...30,
-              imageName: "bonsai14",
-              title: "成长树形",
-              message: "已经具备明显的树形，继续呵护。"),
-        .init(range: 31...50,
-              imageName: "bonsai15",
-              title: "繁茂期",
-              message: "枝叶繁茂，专注成果令人欣喜。"),
-        .init(range: 51...Int.max,
-              imageName: "bonsai16",
-              title: "臻于成熟",
-              message: "专注盆景已成为你日常的一部分。")
-    ]
+    @EnvironmentObject private var languageManager: LanguageManager
+    private var stages: [BonsaiStage] {
+        [
+            .init(range: 0...2,
+                  imageName: "bonsai1",
+                  title: languageManager.localized("初芽"),
+                  message: languageManager.localized("坚持完成任务，嫩芽将逐渐长高。")),
+            .init(range: 3...7,
+                  imageName: "bonsai12",
+                  title: languageManager.localized("幼苗"),
+                  message: languageManager.localized("幼苗开始舒展枝叶，保持良好势头。")),
+            .init(range: 8...15,
+                  imageName: "bonsai13",
+                  title: languageManager.localized("成长期"),
+                  message: languageManager.localized("枝干更稳固，专注力也更强大。")),
+            .init(range: 16...30,
+                  imageName: "bonsai14",
+                  title: languageManager.localized("成长树形"),
+                  message: languageManager.localized("已经具备明显的树形，继续呵护。")),
+            .init(range: 31...50,
+                  imageName: "bonsai15",
+                  title: languageManager.localized("繁茂期"),
+                  message: languageManager.localized("枝叶繁茂，专注成果令人欣喜。")),
+            .init(range: 51...Int.max,
+                  imageName: "bonsai16",
+                  title: languageManager.localized("臻于成熟"),
+                  message: languageManager.localized("专注盆景已成为你日常的一部分。"))
+        ]
+    }
 
     var body: some View {
         ScrollView {
@@ -57,16 +59,16 @@ struct BonsaiView: View {
         .onAppear {
             hasNewBonsaiGrowth = false
         }
-        .navigationTitle("专注盆景")
+        .navigationTitle(languageManager.localized("专注盆景"))
         .navigationBarTitleDisplayMode(.inline)
     }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("我的专注盆景")
+            Text(languageManager.localized("我的专注盆景"))
                 .font(.system(size: 32, weight: .bold))
                 .foregroundColor(theme.textPrimary)
-            Text("已连续专注 \(controller.bonsai.growthPoints) 天")
+            Text(languageManager.localizedFormat("已连续专注 %d 天", controller.bonsai.growthPoints))
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundColor(theme.textSecondary)
         }
@@ -100,14 +102,14 @@ struct BonsaiView: View {
 
     private var growthSummary: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("成长轨迹")
+            Text(languageManager.localized("成长轨迹"))
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundColor(theme.textPrimary)
 
             HStack(spacing: 16) {
-                summaryItem(title: "成长值",
-                            value: "\(controller.bonsai.growthPoints) 天")
-                summaryItem(title: "下一阶段",
+                summaryItem(title: languageManager.localized("成长值"),
+                            value: languageManager.localizedFormat("%d 天", controller.bonsai.growthPoints))
+                summaryItem(title: languageManager.localized("下一阶段"),
                             value: nextStageDescription)
             }
 
@@ -124,10 +126,10 @@ struct BonsaiView: View {
 
     private var tipsCard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("成长提示")
+            Text(languageManager.localized("成长提示"))
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundColor(theme.textPrimary)
-            Text("只要坚持完成当天所有任务，盆景就会迎来新的变化。它不会因为暂时的停顿而枯萎，请放轻松继续向前。")
+            Text(languageManager.localized("只要坚持完成当天所有任务，盆景就会迎来新的变化。它不会因为暂时的停顿而枯萎，请放轻松继续向前。"))
                 .font(.system(size: 15))
                 .foregroundColor(theme.textSecondary)
                 .lineSpacing(4)
@@ -153,7 +155,7 @@ struct BonsaiView: View {
                 Image(systemName: "photo")
                     .font(.system(size: 28, weight: .semibold))
                     .foregroundColor(theme.textSecondary)
-                Text("缺少 \(imageName).png")
+                Text(languageManager.localizedFormat("缺少 %@.png", imageName))
                     .font(.system(size: 14))
                     .foregroundColor(theme.textSecondary)
             }
@@ -208,10 +210,10 @@ struct BonsaiView: View {
         guard let nextStage = stages.first(where: {
             $0.lowerBound > controller.bonsai.growthPoints
         }) else {
-            return "已达最高阶段"
+            return languageManager.localized("已达最高阶段")
         }
         let remaining = max(0, nextStage.lowerBound - controller.bonsai.growthPoints)
-        return "再坚持 \(remaining) 天"
+        return languageManager.localizedFormat("再坚持 %d 天", remaining)
     }
 }
 
