@@ -18,10 +18,12 @@ struct SettingsView: View {
     @Environment(\.themePalette) private var theme
     @EnvironmentObject private var themeManager: ThemeManager
     @EnvironmentObject private var languageManager: LanguageManager
+    @EnvironmentObject private var lifecycleManager: AppLifecycleManager
     @State private var mailAlert: MailAlert?
     @State private var showingMailComposer = false
     @AppStorage(SettingsStorageKeys.cloudSyncEnabled, store: UserDefaults.appGroup) private var isCloudSyncEnabled: Bool = true
-    @State private var showCloudSyncRestartAlert = false
+    @State private var isProcessingCloudSync = false
+    @State private var cloudSyncError: CloudSyncError?
 
     private let appStoreReviewURL = URL(string: "https://apps.apple.com/app/id0000000000?action=write-review")
     private let shareURL = URL(string: "https://apps.apple.com/app/id0000000000")
@@ -82,11 +84,10 @@ struct SettingsView: View {
         .sheet(isPresented: $showingMailComposer) {
             mailComposerSheet
         }
-        .alert(isPresented: $showCloudSyncRestartAlert) {
-            let strings = SettingsStrings(languageManager: languageManager)
-            return Alert(title: Text(strings.cloudSyncAlertTitle),
-                         message: Text(strings.cloudSyncAlertMessage),
-                         dismissButton: .default(Text(strings.okay)))
+        .alert(item: $cloudSyncError) { error in
+            Alert(title: Text(error.title),
+                  message: Text(error.message),
+                  dismissButton: .default(Text(languageManager.localized("好的"))))
         }
     }
 
@@ -192,12 +193,18 @@ struct SettingsView: View {
                 Spacer()
                 Toggle("", isOn: Binding(get: { isCloudSyncEnabled },
                                          set: { handleCloudSyncToggle($0) }))
-                    .labelsHidden()
-                    .tint(theme.primary)
+                .labelsHidden()
+                .tint(theme.primary)
+                .disabled(isProcessingCloudSync)
             }
             Text(strings.cloudSyncFootnote)
                 .font(.footnote)
                 .foregroundColor(theme.textSecondary)
+            if isProcessingCloudSync {
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .tint(theme.primary)
+            }
         }
     }
 
@@ -271,8 +278,24 @@ struct SettingsView: View {
     }
 
     private func handleCloudSyncToggle(_ isOn: Bool) {
+        guard isProcessingCloudSync == false else { return }
+        let previousValue = isCloudSyncEnabled
         isCloudSyncEnabled = isOn
-        showCloudSyncRestartAlert = true
+        isProcessingCloudSync = true
+
+        Task { @MainActor in
+            lifecycleManager.restart()
+            isProcessingCloudSync = false
+
+            let defaults = UserDefaults.appGroup
+            let appliedValue = defaults.bool(forKey: SettingsStorageKeys.cloudSyncEnabled)
+            guard appliedValue == isOn else {
+                isCloudSyncEnabled = appliedValue
+                cloudSyncError = CloudSyncError(title: languageManager.localized("同步设置未生效"),
+                                                message: languageManager.localized("当前设备无法连接 iCloud，同步已自动恢复为本地模式。请稍后再试。"))
+                return
+            }
+        }
     }
 }
 
@@ -349,6 +372,12 @@ private enum MailAlert: Identifiable {
     case mailUnavailable
 
     var id: Int { 0 }
+}
+
+private struct CloudSyncError: Identifiable {
+    let id = UUID()
+    let title: String
+    let message: String
 }
 
 private struct SettingsStrings {
