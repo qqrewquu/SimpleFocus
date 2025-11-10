@@ -66,11 +66,15 @@
 			membershipExceptions = (
 				Models/TaskItem.swift,
 				Policies/AppGroup.swift,
+				Policies/CloudSyncConfig.swift,
 				Policies/TaskLimit.swift,
 				Services/CelebrationProvider.swift,
 				Services/EncouragementProvider.swift,
+				Services/SettingsStorageKeys.swift,
 				Shared/LiveActivitySharedModels.swift,
+				Stores/PersistenceController.swift,
 				Stores/TaskStore.swift,
+				"Utilities/UserDefaults+AppGroup.swift",
 				Widget/TaskWidgetTimelineBuilder.swift,
 			);
 			target = FD22C4B02EA40D9E00E88B83 /* SimpleFocusWidgetExtension */;
